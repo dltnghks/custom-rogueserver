@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/pagefaultgames/rogueserver/db"
+	"github.com/pagefaultgames/rogueserver/dbcount"
 )
 
 type LoginResponse GenericAuthResponse
@@ -33,6 +34,8 @@ type LoginResponse GenericAuthResponse
 // /account/login - log into account
 func Login(username, password string) (LoginResponse, error) {
 	var response LoginResponse
+
+	dbcount.InitializeRequestCounts()
 
 	if !isValidUsername(username) {
 		return response, fmt.Errorf("invalid username")

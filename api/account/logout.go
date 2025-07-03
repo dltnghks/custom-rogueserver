@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/pagefaultgames/rogueserver/db"
+	"github.com/pagefaultgames/rogueserver/dbcount"
 )
 
 // /account/logout - log out of account
@@ -35,6 +36,8 @@ func Logout(token []byte) error {
 
 		return fmt.Errorf("failed to remove account session")
 	}
+
+	dbcount.PrintRequestCounts()
 
 	return nil
 }

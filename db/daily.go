@@ -20,12 +20,15 @@ package db
 import (
 	"math"
 
+	"github.com/pagefaultgames/rogueserver/dbcount"
 	"github.com/pagefaultgames/rogueserver/defs"
 )
 
 func TryAddDailyRun(seed string) (string, error) {
 	var actualSeed string
 	err := handle.QueryRow("INSERT INTO dailyRuns (seed, date) VALUES (?, UTC_DATE()) ON DUPLICATE KEY UPDATE date = date RETURNING seed", seed).Scan(&actualSeed)
+	dbcount.IncrementRequestCount("dailyRuns", true)
+
 	if err != nil {
 		return "", err
 	}
@@ -36,6 +39,8 @@ func TryAddDailyRun(seed string) (string, error) {
 func GetDailyRunSeed() (string, error) {
 	var seed string
 	err := handle.QueryRow("SELECT seed FROM dailyRuns WHERE date = UTC_DATE()").Scan(&seed)
+	dbcount.IncrementRequestCount("dailyRuns", false)
+
 	if err != nil {
 		return "", err
 	}
@@ -45,6 +50,8 @@ func GetDailyRunSeed() (string, error) {
 
 func AddOrUpdateAccountDailyRun(uuid []byte, score int, wave int) error {
 	_, err := handle.Exec("INSERT INTO accountDailyRuns (uuid, date, score, wave, timestamp) VALUES (?, UTC_DATE(), ?, ?, UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE score = GREATEST(score, ?), wave = GREATEST(wave, ?), timestamp = IF(score < ?, UTC_TIMESTAMP(), timestamp)", uuid, score, wave, score, wave, score)
+	dbcount.IncrementRequestCount("accountDailyRuns", true)
+
 	if err != nil {
 		return err
 	}
@@ -66,6 +73,11 @@ func FetchRankings(category int, page int) ([]defs.DailyRanking, error) {
 	}
 
 	results, err := handle.Query(query, offset)
+
+	dbcount.IncrementRequestCount("accountDailyRuns", false)
+	dbcount.IncrementRequestCount("dailyRuns", true)
+	dbcount.IncrementRequestCount("accounts", true)
+
 	if err != nil {
 		return rankings, err
 	}
@@ -96,6 +108,10 @@ func FetchRankingPageCount(category int) (int, error) {
 
 	var recordCount int
 	err := handle.QueryRow(query).Scan(&recordCount)
+	dbcount.IncrementRequestCount("accountDailyRuns", false)
+	dbcount.IncrementRequestCount("dailyRuns", true)
+	dbcount.IncrementRequestCount("accounts", true)
+
 	if err != nil {
 		return 0, err
 	}
