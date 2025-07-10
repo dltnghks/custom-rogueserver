@@ -18,6 +18,7 @@
 package db
 
 import (
+	"log"
 	"math"
 
 	"github.com/pagefaultgames/rogueserver/dbcount"
@@ -28,6 +29,9 @@ func TryAddDailyRun(seed string) (string, error) {
 	var actualSeed string
 	err := handle.QueryRow("INSERT INTO dailyRuns (seed, date) VALUES (?, UTC_DATE()) ON DUPLICATE KEY UPDATE date = date RETURNING seed", seed).Scan(&actualSeed)
 	dbcount.IncrementRequestCount("dailyRuns", true)
+	dbcount.AddWriteCount("dailyRuns", "TryAddDailyRun")
+
+	log.Printf("tryAddDailyRun")
 
 	if err != nil {
 		return "", err
@@ -37,9 +41,11 @@ func TryAddDailyRun(seed string) (string, error) {
 }
 
 func GetDailyRunSeed() (string, error) {
+	log.Printf("GetDailyRunSeed")
 	var seed string
 	err := handle.QueryRow("SELECT seed FROM dailyRuns WHERE date = UTC_DATE()").Scan(&seed)
 	dbcount.IncrementRequestCount("dailyRuns", false)
+	dbcount.AddReadCount("dailyRuns", "GetDailyRunSeed")
 
 	if err != nil {
 		return "", err
@@ -49,8 +55,10 @@ func GetDailyRunSeed() (string, error) {
 }
 
 func AddOrUpdateAccountDailyRun(uuid []byte, score int, wave int) error {
+	log.Printf("AddOrUpdateAccountDailyRun")
 	_, err := handle.Exec("INSERT INTO accountDailyRuns (uuid, date, score, wave, timestamp) VALUES (?, UTC_DATE(), ?, ?, UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE score = GREATEST(score, ?), wave = GREATEST(wave, ?), timestamp = IF(score < ?, UTC_TIMESTAMP(), timestamp)", uuid, score, wave, score, wave, score)
 	dbcount.IncrementRequestCount("accountDailyRuns", true)
+	dbcount.AddWriteCount("accountDailyRuns", "AddOrUpdateAccountDailyRun")
 
 	if err != nil {
 		return err
@@ -60,6 +68,7 @@ func AddOrUpdateAccountDailyRun(uuid []byte, score int, wave int) error {
 }
 
 func FetchRankings(category int, page int) ([]defs.DailyRanking, error) {
+	log.Printf("FetchRankings category")
 	var rankings []defs.DailyRanking
 
 	offset := (page - 1) * 10
@@ -77,6 +86,9 @@ func FetchRankings(category int, page int) ([]defs.DailyRanking, error) {
 	dbcount.IncrementRequestCount("accountDailyRuns", false)
 	dbcount.IncrementRequestCount("dailyRuns", true)
 	dbcount.IncrementRequestCount("accounts", true)
+	dbcount.AddReadCount("accounts", "FetchRankings")
+	//dbcount.AddReadCount("dailyRuns", "FetchRankings")
+	dbcount.AddReadCount("accountDailyRuns", "FetchRankings")
 
 	if err != nil {
 		return rankings, err
@@ -98,6 +110,7 @@ func FetchRankings(category int, page int) ([]defs.DailyRanking, error) {
 }
 
 func FetchRankingPageCount(category int) (int, error) {
+	log.Printf("FetchRankingPageCount")
 	var query string
 	switch category {
 	case 0:
@@ -111,6 +124,7 @@ func FetchRankingPageCount(category int) (int, error) {
 	dbcount.IncrementRequestCount("accountDailyRuns", false)
 	dbcount.IncrementRequestCount("dailyRuns", true)
 	dbcount.IncrementRequestCount("accounts", true)
+	dbcount.AddReadCount("accounts", "FetchRankingPageCount")
 
 	if err != nil {
 		return 0, err

@@ -48,4 +48,5 @@ func PrintRequestCounts() {
 	for tableName, count := range writeCounts {
 		println("Write", tableName, count)
 	}
+
 }

@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/pagefaultgames/rogueserver/db"
 	"github.com/pagefaultgames/rogueserver/dbcount"
@@ -38,6 +39,10 @@ func Logout(token []byte) error {
 	}
 
 	dbcount.PrintRequestCounts()
+
+	log.Printf("-------------------------------------------------------")
+
+	dbcount.PrintCount()
 
 	return nil
 }
