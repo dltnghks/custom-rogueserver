@@ -46,6 +46,7 @@ func AddAccountSession(username string, token []byte) error {
 	dbcount.IncrementRequestCount("sessions", true)
 	dbcount.AddReadCount("accounts", "AddAccountSession")
 	dbcount.AddWriteCount("sessions", "AddAccountSession")
+	dbcount.LogDBAccess("accounts", "AddAccountSession")
 
 	if err != nil {
 		return err
@@ -306,6 +307,7 @@ func UpdateAccountLastActivity(uuid []byte) error {
 
 func UpdateAccountStats(uuid []byte, stats defs.GameStats, voucherCounts map[string]int) error {
 	var columns = []string{"playTime", "battles", "classicSessionsPlayed", "sessionsWon", "highestEndlessWave", "highestLevel", "pokemonSeen", "pokemonDefeated", "pokemonCaught", "pokemonHatched", "eggsPulled", "regularVouchers", "plusVouchers", "premiumVouchers", "goldenVouchers"}
+	//이 columns를 어떻게 가져오는게 좋을려나..?
 
 	var statCols []string
 	var statValues []interface{}
@@ -472,6 +474,7 @@ func FetchUUIDFromToken(token []byte) ([]byte, error) {
 	err := handle.QueryRow("SELECT uuid FROM sessions WHERE token = ?", token).Scan(&uuid)
 	dbcount.IncrementRequestCount("sessions", false)
 	dbcount.AddReadCount("sessions", "FetchUUIDFromToken")
+	dbcount.LogDBAccess("sessions", "FetchUUIDFromToken")
 
 	if err != nil {
 		return nil, err

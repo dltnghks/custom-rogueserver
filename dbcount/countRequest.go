@@ -2,6 +2,7 @@ package dbcount
 
 import (
 	"log"
+	"time"
 )
 
 var countReadAccounts int = 0
@@ -44,12 +45,33 @@ var systemDataDeleteNum int = 0
 var playtimeNum int = 0
 var playerCountNum int = 0
 var battleCountNum int = 0
-var classicSessionCountNum int = 0
+var classicSessionPlayedCountNum int = 0
 var lastActivityNum int = 0
 var unkownTableNum int = 0
+var fetchRankingPageCountNum int = 0
+var fetchRankingsNum int = 0
+var countdailyRuns int = 0
+var getDailyRunSeedNum int = 0
+
+var initTime time.Time
+
+func InitTimer() {
+	initTime = time.Now()
+	log.Printf("init 시작 시간 : %s", initTime.Format("time.RFC3339Nano"))
+}
+
+func LogDBAccess(tableName string, funcName string) {
+	elapsedTime := time.Since(initTime).Seconds()
+	log.Printf("DB Access +%.3fs tableName=%s funcName=%s", elapsedTime, tableName, funcName)
+}
+
+func Logout() {
+	totalElapsed := time.Since(initTime).Seconds()
+	log.Printf("Logout game end and total time: +%.3fs", totalElapsed)
+}
 
 func PrintCount() {
-	log.Println("Count start test")
+	log.Println("Count start")
 	log.Printf("------------------------------------------")
 	log.Printf("Read Accounts: %d", countReadAccounts)
 	log.Printf("Read AccountStats: %d", countReadAccountStats)
@@ -57,6 +79,7 @@ func PrintCount() {
 	log.Printf("Read SessionSaveData: %d", countReadSessionSaveData)
 	log.Printf("Read ActiveClientSessions: %d", countReadActiveClientSessions)
 	log.Printf("Read SystemSaveData: %d", countReadSystemSaveData)
+	log.Printf("Read DailyRuns: %d", countdailyRuns)
 	log.Printf("Write Accounts: %d", countWriteAccounts)
 	log.Printf("Write AccountStats: %d", countWriteAccountStats)
 	log.Printf("Write Sessions: %d", countWriteSessions)
@@ -88,10 +111,12 @@ func PrintCount() {
 	log.Printf("sessionSaveDataNum: %d", sessionSaveDataNum)
 	log.Printf("systemDataDeleteNum: %d", systemDataDeleteNum)
 	log.Printf("playtimeNum: %d", playtimeNum)
-	log.Printf("playerCountNum: %d", playerCountNum)
+	log.Printf("playerCountNum lastActivity: %d", lastActivityNum)
 	log.Printf("battleCountNum: %d", battleCountNum)
-	log.Printf("classicSessionCountNum: %d", classicSessionCountNum)
+	log.Printf("classicSessionPlayedCountNum: %d", classicSessionPlayedCountNum)
 	log.Printf("lastActivityNum: %d", lastActivityNum)
+	log.Printf("FetchRankingPageCountNum: %d", fetchRankingPageCountNum)
+	log.Printf("FetchRankingsNum: %d", fetchRankingsNum)
 	log.Printf("Unknown table name: %d", unkownTableNum)
 }
 
@@ -173,36 +198,40 @@ func AddReadCount(tableName string, funcName string) {
 		}
 		//account.go end.
 
-		if "FetchRankingPageCount" == funcName {
-			log.Printf("FetchRankingPageCount!")
-		}
-		if "FetchRankings" == funcName {
-			log.Printf("FetchRankings!")
-		}
 		if "FetchPlayerCount" == funcName {
-			playerCountNum++
-			log.Printf("FetchPlayerCount : %d", playerCountNum)
+			lastActivityNum++
+			log.Printf("FetchPlayerCount lastActivityNum : %d", lastActivityNum)
 		}
 		if "FetchBattleCount" == funcName {
-			battleCountNum++
-			log.Printf("FetchBattleCount : %d", battleCountNum)
+			bannedNum++
+			//battleCountNum++
+			log.Printf("FetchBattleCount bannedNum: %d", bannedNum)
 			//log.Printf("FetchBattleCount!")
 		}
 		if "FetchClassicSessionCount" == funcName {
-			classicSessionCountNum++
-			log.Printf("FetchClassicSessionCount : %d", classicSessionCountNum)
-			//log.Printf("FetchClassicSessionCount!")
+			classicSessionPlayedCountNum++
+			log.Printf("FetchClassicSessionCount : %d", classicSessionPlayedCountNum)
 		}
+		//game.go 항목 추가.
 
 	case "accountStats":
 		countReadAccountStats++
-		if "FetchRankings" == funcName {
-			log.Printf("FetchRankings!")
+		if "FetchBattleCount" == funcName {
+			battleCountNum++
+			log.Printf("FetchBattleCount battleCountNum : %d", battleCountNum)
 		}
+		if "FetchClassicSessionCount" == funcName {
+			classicSessionPlayedCountNum++
+			log.Printf("FetchClassicSessionPlayedCount : %d", classicSessionPlayedCountNum)
+		}
+		//game.go 항목 추가.
+
 		if "RetrievePlaytime" == funcName {
 			playtimeNum++
 			log.Printf("RetrievePlaytime playtimeNum : %d", playtimeNum)
 		}
+		//savedata.go 항목 추가.
+
 	case "sessions":
 		countReadSessions++
 		if "FetchUUIDFromToken" == funcName {
@@ -250,7 +279,7 @@ func AddWriteCount(tableName string, funcName string) {
 		if "AddAccountRecord" == funcName {
 			uuidNum++
 			userName++
-			hashNum++
+			hashNum++ //register 과정에서 호출되는거라 해당 함수는 작동을 안 함.
 			saltNum++
 			registeredNum++
 			log.Printf("INSERT uuid, username, hash, salt, registered : %d, %d, %d, %d, %d", uuidNum, userName, hashNum, saltNum, registeredNum)
@@ -281,8 +310,9 @@ func AddWriteCount(tableName string, funcName string) {
 			log.Printf("Update key, salt : %d, %d", keyNum, saltNum)
 		}
 		if "UpdateAccountLastActivity" == funcName {
-			lastLoggedInNum++
-			log.Printf("Update lastActivity : %d", lastLoggedInNum)
+			lastActivityNum++
+			//lastLoggedInNum++
+			log.Printf("Update lastActivity : %d", lastActivityNum)
 		}
 		if "SetAccountBanned" == funcName {
 			bannedNum++
@@ -317,12 +347,13 @@ func AddWriteCount(tableName string, funcName string) {
 			googleIdNum++
 			log.Printf("Update googleId : %d", googleIdNum)
 		}
+		//account.go 항목 추가.
 
 	case "accountStats":
 		countWriteAccountStats++
 		if "UpdateAccountStats" == funcName {
 			statsNum++
-			log.Printf("Insert stats : %d", statsNum)
+			log.Printf("Insert stats playtime, battles, classicSessionPlayed 등..: %d", statsNum)
 		}
 
 	case "sessions":

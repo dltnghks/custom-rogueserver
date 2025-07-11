@@ -43,6 +43,7 @@ func Logout(token []byte) error {
 	log.Printf("-------------------------------------------------------")
 
 	dbcount.PrintCount()
+	dbcount.Logout()
 
 	return nil
 }

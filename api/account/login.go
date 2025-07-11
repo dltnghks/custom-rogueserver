@@ -34,6 +34,7 @@ type LoginResponse GenericAuthResponse
 // /account/login - log into account
 func Login(username, password string) (LoginResponse, error) {
 	var response LoginResponse
+	dbcount.InitTimer()
 
 	dbcount.InitializeRequestCounts()
 
