@@ -107,7 +107,7 @@ func InitTimer() error {
 		return fmt.Errorf("디렉토리 생성 실패: %w", err)
 	}
 
-	csvFile, err = os.Create("/app/csv/db_access_count.csv")
+	csvFile, err = os.Create("/app/csv/db_access_count2.csv")
 	if err != nil {
 		log.Fatalf("Failed to create CSV file: %v", err)
 	}
