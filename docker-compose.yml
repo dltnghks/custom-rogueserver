@@ -2,6 +2,8 @@ services:
   server:
     image: rogueserver:latest
     restart: unless-stopped
+    volumes:
+      - ./csv:/app/csv
     environment:
       debug: "true"
       dbaddr: db
