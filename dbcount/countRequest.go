@@ -107,7 +107,7 @@ func InitTimer() error {
 		return fmt.Errorf("디렉토리 생성 실패: %w", err)
 	}
 
-	csvFile, err = os.Create("/app/csv/db_access_count4.csv")
+	csvFile, err = os.Create("/app/csv/new_db_access_count.csv")
 	if err != nil {
 		log.Fatalf("Failed to create CSV file: %v", err)
 	}
@@ -354,10 +354,10 @@ func AddReadCount(tableName string, funcName string) {
 
 	case "activeClientSessions":
 		countReadActiveClientSessions++
-		if "IsActiveClientSession" == funcName {
+		if "IsActiveSession" == funcName {
 			idNum++
-			log.Printf("IsActiveClientSession idNum : %d", idNum)
-			LogDBAccess("activeClientSessions", "IsActiveClientSession", "R", id, "", "", "", "")
+			log.Printf("IsActiveSession idNum : %d", idNum)
+			LogDBAccess("activeClientSessions", "IsActiveSession", "R", id, "", "", "", "")
 		}
 
 	case "systemSaveData":
