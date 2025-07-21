@@ -107,7 +107,7 @@ func InitTimer() error {
 		return fmt.Errorf("디렉토리 생성 실패: %w", err)
 	}
 
-	csvFile, err = os.Create("/app/csv/new_db_access_count.csv")
+	csvFile, err = os.Create("/app/csv/player2_db_access_count.csv")
 	if err != nil {
 		log.Fatalf("Failed to create CSV file: %v", err)
 	}
@@ -163,7 +163,7 @@ func PrintCount() {
 	log.Printf("Write ActiveClientSessions: %d", countWriteActiveClientSessions)
 	log.Printf("Write SystemSaveData: %d", countWriteSystemSaveData)
 	log.Println(" ")
-	log.Printf("userName: %d", userName)
+	log.Printf("userNameNum: %d", userNameNum)
 	log.Printf("discordIdNum: %d", discordIdNum)
 	log.Printf("googleIdNum: %d", googleIdNum)
 	log.Printf("lastLoggedInNum: %d", lastLoggedInNum)
@@ -224,7 +224,7 @@ func AddReadCount(tableName string, funcName string) {
 		}
 		if "FetchGoogleIdByUsername" == funcName {
 			googleIdNum++
-			log.Printf("discordIdNum : %d", googleIdNum)
+			log.Printf("googleIdNum : %d", googleIdNum)
 			LogDBAccess("accounts", "FetchGoogleIdByUsername", "R", googleId, "", "", "", "")
 		}
 		if "FetchDiscordIdByUUID" == funcName {
