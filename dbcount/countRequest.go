@@ -95,7 +95,7 @@ var getDailyRunSeed string = "getDailyRunSeed"
 var initTime time.Time
 var csvWriter *csv.Writer
 var csvFile *os.File
-var mu sync.Mutex
+var mut sync.Mutex
 
 func InitTimer() error {
 	initTime = time.Now()
@@ -125,8 +125,8 @@ func InitTimer() error {
 }
 
 func LogDBAccess(tableName string, funcName string, RW string, data1 string, data2 string, data3 string, data4 string, data5 string) {
-	mu.Lock()
-	defer mu.Unlock()
+	mut.Lock()
+	defer mut.Unlock()
 	elapsedTime := time.Since(initTime).Seconds()
 	//log.Printf("DB Access +%.3fs tableName=%s funcName=%s", elapsedTime, tableName, funcName)
 	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
