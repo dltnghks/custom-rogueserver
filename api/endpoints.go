@@ -210,6 +210,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Printf("get session 완료.")
+
 		writeJSON(w, r, save)
 	case "update":
 		var session defs.SessionSaveData
@@ -412,6 +414,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("action") {
 	case "get":
 		if !active {
+			log.Printf("handle system get and updateActiveSession")
 			err = db.UpdateActiveSession(uuid, r.URL.Query().Get("clientSessionId"))
 			if err != nil {
 				httpError(w, r, fmt.Errorf("failed to update active session: %s", err), http.StatusBadRequest)
@@ -429,6 +432,8 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 			return
 		}
+
+		log.Printf("get system 완료.")
 
 		writeJSON(w, r, save)
 	case "update":
@@ -490,6 +495,8 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 			response.SystemData = storedSaveData
 		}
+
+		log.Printf("verify 작동 완료")
 
 		writeJSON(w, r, response)
 	case "delete":

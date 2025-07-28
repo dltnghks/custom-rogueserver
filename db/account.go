@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -465,6 +466,8 @@ func UpdateActiveSession(uuid []byte, clientSessionId string) error {
 	if err != nil {
 		return err
 	}
+
+	log.Printf("정상적으로 clientsessionid를 업데이트함.")
 
 	return nil
 }

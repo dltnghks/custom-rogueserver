@@ -28,7 +28,7 @@ func FetchPlayerCount() (int, error) {
 	var playerCount int
 	err := handle.QueryRow("SELECT COUNT(*) FROM accounts WHERE lastActivity > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 5 MINUTE)").Scan(&playerCount)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchPlayerCount")
+	//dbcount.AddReadCount("accounts", "FetchPlayerCount")
 
 	if err != nil {
 		return 0, err
@@ -43,8 +43,8 @@ func FetchBattleCount() (int, error) {
 	err := handle.QueryRow("SELECT COALESCE(SUM(s.battles), 0) FROM accountStats s JOIN accounts a ON a.uuid = s.uuid WHERE a.banned = 0").Scan(&battleCount)
 	dbcount.IncrementRequestCount("accounts", false)
 	dbcount.IncrementRequestCount("accountStats", false)
-	dbcount.AddReadCount("accounts", "FetchBattleCount")
-	dbcount.AddReadCount("accountStats", "FetchBattleCount")
+	//dbcount.AddReadCount("accounts", "FetchBattleCount")
+	//dbcount.AddReadCount("accountStats", "FetchBattleCount")
 
 	if err != nil {
 		return 0, err
@@ -59,8 +59,8 @@ func FetchClassicSessionCount() (int, error) {
 	err := handle.QueryRow("SELECT COALESCE(SUM(s.classicSessionsPlayed), 0) FROM accountStats s JOIN accounts a ON a.uuid = s.uuid WHERE a.banned = 0").Scan(&classicSessionCount)
 	dbcount.IncrementRequestCount("accounts", false)
 	dbcount.IncrementRequestCount("accountStats", false)
-	dbcount.AddReadCount("accounts", "FetchClassicSessionCount")
-	dbcount.AddReadCount("accountStats", "FetchClassicSessionCount")
+	//dbcount.AddReadCount("accounts", "FetchClassicSessionCount")
+	//dbcount.AddReadCount("accountStats", "FetchClassicSessionCount")
 
 	if err != nil {
 		return 0, err

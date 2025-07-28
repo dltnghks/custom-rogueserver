@@ -38,6 +38,8 @@ func Login(username, password string) (LoginResponse, error) {
 
 	dbcount.InitializeRequestCounts()
 
+	//log.Printf("username : %s", username)
+
 	if !isValidUsername(username) {
 		return response, fmt.Errorf("invalid username")
 	}
