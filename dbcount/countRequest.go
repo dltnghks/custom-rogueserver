@@ -130,12 +130,14 @@ func LogDBAccess(uuid string, tableName string, funcName string, RW string, data
 	mut.Lock()
 	defer mut.Unlock()
 
-	csvWriter, _ := csvWriters[uuid]
-	// if !ok {
-	// 	// Initialize for new UUID
-	// 	InitTimer(uuid)
-	// 	csvWriter = csvWriters[uuid]
-	// }
+	//log.Printf(uuid, "uuid	!!!!!!!!!!!!")
+
+	csvWriter, ok := csvWriters[uuid]
+	if !ok {
+		// Initialize for new UUID
+		InitTimer(uuid)
+		csvWriter = csvWriters[uuid]
+	}
 
 	elapsedTime := time.Since(initTime).Seconds()
 	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
@@ -155,6 +157,8 @@ func Logout(uuid string) {
 
 	mut.Lock()
 	defer mut.Unlock()
+
+	//log.Printf("uuid : %s", uuid)
 
 	if csvFile, ok := csvFiles[uuid]; ok {
 		csvWriters[uuid].Flush()
@@ -219,6 +223,7 @@ func AddReadCount(uuidReal string, tableName string, funcName string) {
 	switch tableName {
 	case "accounts":
 		countReadAccounts++
+		//log.Printf("read account start accounts fetchuuidfromusername!!!!!!!!")
 		if "AddAccountSession" == funcName {
 			uuidNum++
 			tokenNum++

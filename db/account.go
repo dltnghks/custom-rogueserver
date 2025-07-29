@@ -143,11 +143,19 @@ func FetchUsernameByDiscordId(discordId string) (string, error) {
 	//if err != nil {
 	// 에러 처리
 	//}
-	//uuid, err := FetchUUIDFromUsername(username)
-	//if err != nil {
-	// 에러 처리
-	//}
-	dbcount.AddReadCount(string("qwer"), "accounts", "FetchUsernameByDiscordId")
+
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		log.Printf("errororrroorroror")
+	}
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	if encodeUuid == "" {
+		log.Printf("encodeUuid none")
+	} else {
+		log.Printf("encodeUuid exist")
+		//log.Printf(encodeUuid, "encodeUuid!!!!!!!!!!!!!!!#$#$@$@")
+		dbcount.AddReadCount(string("qwer"), "accounts", "FetchUsernameByDiscordId")
+	}
 
 	if err != nil {
 		return "", err
@@ -161,7 +169,19 @@ func FetchUsernameByGoogleId(googleId string) (string, error) {
 	err := handle.QueryRow("SELECT username FROM accounts WHERE googleId = ?", googleId).Scan(&username)
 	dbcount.IncrementRequestCount("accounts", false)
 
-	dbcount.AddReadCount(string("test"), "accounts", "FetchUsernameByGoogleId")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		log.Printf("errororrroorroror")
+	}
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	if encodeUuid == "" {
+		log.Printf("encodeUuid none")
+	} else {
+		log.Printf("encodeUuid exist")
+		//log.Printf(encodeUuid, "encodeUuid!!!!!!!!!!!!!!!#$#$@$@")
+		dbcount.AddReadCount(string("test"), "accounts", "FetchUsernameByGoogleId")
+		//dbcount.AddReadCount(string("qwer"), "accounts", "FetchUsernameByDiscordId")
+	}
 
 	if err != nil {
 		return "", err
@@ -180,6 +200,11 @@ func FetchDiscordIdByUsername(username string) (string, error) {
 	}
 
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	if encodeUuid == "" {
+		log.Printf("FetchDiscordIdByUsername error")
+	} else {
+		log.Printf(encodeUuid, "encodeUuid@")
+	}
 	dbcount.AddReadCount(encodeUuid, "accounts", "FetchDiscordIdByUsername")
 
 	if err != nil {
@@ -203,6 +228,11 @@ func FetchGoogleIdByUsername(username string) (string, error) {
 	}
 
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	if encodeUuid == "" {
+		log.Printf("FetchGoogleIdByUsername error")
+	} else {
+		log.Printf(encodeUuid, "encodeUuid@@")
+	}
 	dbcount.AddReadCount(encodeUuid, "accounts", "FetchGoogleIdByUsername")
 
 	if err != nil {
@@ -481,14 +511,23 @@ func SetAccountBanned(uuid []byte, banned bool) error {
 
 func FetchAccountKeySaltFromUsername(username string) ([]byte, []byte, error) {
 	var key, salt []byte
+	//log.Printf("key salt@!!~!@@")
+
 	err := handle.QueryRow("SELECT hash, salt FROM accounts WHERE username = ?", username).Scan(&key, &salt)
+	//log.Printf("encodee error12")
 	dbcount.IncrementRequestCount("accounts", false)
+	//log.Printf("encodee error34")
+
 	uuid, err := FetchUUIDFromUsername(username)
 	if err != nil {
+		log.Printf("error 2")
 		// 에러 처리
 	}
 
+	//log.Printf("encodee error")
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+
+	//log.Printf(encodeUuid, "encodeuuid!!!!!!!!!!!!")
 	dbcount.AddReadCount(encodeUuid, "accounts", "FetchAccountKeySaltFromUsername")
 
 	if err != nil {
@@ -583,15 +622,19 @@ func FetchUUIDFromToken(token []byte) ([]byte, error) {
 }
 
 func RemoveSessionFromToken(token []byte) error {
-	_, err := handle.Exec("DELETE FROM sessions WHERE token = ?", token)
-	dbcount.IncrementRequestCount("sessions", true)
-	uuid, err := FetchUUIDFromToken(token)
-	if err != nil {
-		// 에러 처리
+	uuid, _ := FetchUUIDFromToken(token)
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+
+	if encodeUuid == "" {
+		log.Printf("remove uuid none")
+	} else {
+		dbcount.AddWriteCount(encodeUuid, "sessions", "RemoveSessionFromToken")
 	}
 
-	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
-	dbcount.AddWriteCount(encodeUuid, "sessions", "RemoveSessionFromToken")
+	dbcount.Logout(encodeUuid)
+
+	_, err := handle.Exec("DELETE FROM sessions WHERE token = ?", token)
+	dbcount.IncrementRequestCount("sessions", true)
 
 	if err != nil {
 		return err
@@ -617,12 +660,15 @@ func FetchUsernameFromUUID(uuid []byte) (string, error) {
 
 func FetchUUIDFromUsername(username string) ([]byte, error) {
 	var uuid []byte
+	//log.Printf("뭐가 문제일까?")
 	err := handle.QueryRow("SELECT uuid FROM accounts WHERE username = ?", username).Scan(&uuid)
 	dbcount.IncrementRequestCount("accounts", false)
 
+	//log.Printf("뭐가 문제일까2?")
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	//log.Printf("encodee erro23131r")
 	dbcount.AddReadCount(encodeUuid, "accounts", "FetchUUIDFromUsername")
-
+	//log.Printf("no encodee error")
 	if err != nil {
 		return nil, err
 	}

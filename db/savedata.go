@@ -20,6 +20,7 @@ package db
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -75,7 +76,9 @@ func ReadSystemSaveData(uuid []byte) (defs.SystemSaveData, error) {
 	var data []byte
 	err := handle.QueryRow("SELECT data FROM systemSaveData WHERE uuid = ?", uuid).Scan(&data)
 	dbcount.IncrementRequestCount("systemSaveData", false)
-	dbcount.AddReadCount(string(uuid), "systemSaveData", "ReadSystemSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddReadCount(encodeUuid, "systemSaveData", "ReadSystemSaveData")
 
 	if err != nil {
 		log.Println("Not Find Data")
@@ -132,7 +135,9 @@ func StoreSystemSaveData(uuid []byte, data defs.SystemSaveData) error {
 
 	_, err = handle.Exec("REPLACE INTO systemSaveData (uuid, data, timestamp) VALUES (?, ?, UTC_TIMESTAMP())", uuid, buf.Bytes())
 	dbcount.IncrementRequestCount("systemSaveData", true)
-	dbcount.AddWriteCount(string(uuid), "systemSaveData", "StoreSystemSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddWriteCount(encodeUuid, "systemSaveData", "StoreSystemSaveData")
 
 	if err != nil {
 		return err
@@ -175,7 +180,9 @@ func StoreSystemSaveDataS3(uuid []byte, data defs.SystemSaveData) error {
 func DeleteSystemSaveData(uuid []byte) error {
 	_, err := handle.Exec("DELETE FROM systemSaveData WHERE uuid = ?", uuid)
 	dbcount.IncrementRequestCount("systemSaveData", true)
-	dbcount.AddWriteCount(string(uuid), "systemSaveData", "DeleteSystemSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddWriteCount(encodeUuid, "systemSaveData", "DeleteSystemSaveData")
 	if err != nil {
 		return err
 	}
@@ -190,7 +197,9 @@ func ReadSessionSaveData(uuid []byte, slot int) (defs.SessionSaveData, error) {
 	var data []byte
 	err := handle.QueryRow("SELECT data FROM sessionSaveData WHERE uuid = ? AND slot = ?", uuid, slot).Scan(&data)
 	dbcount.IncrementRequestCount("sessionSaveData", false)
-	dbcount.AddReadCount(string(uuid), "sessionSaveData", "ReadSessionSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddReadCount(encodeUuid, "sessionSaveData", "ReadSessionSaveData")
 
 	if err != nil {
 		return session, err
@@ -215,7 +224,9 @@ func GetLatestSessionSaveDataSlot(uuid []byte) (int, error) {
 	var slot int
 	err := handle.QueryRow("SELECT slot FROM sessionSaveData WHERE uuid = ? ORDER BY timestamp DESC, slot ASC LIMIT 1", uuid).Scan(&slot)
 	dbcount.IncrementRequestCount("sessionSaveData", false)
-	dbcount.AddReadCount(string(uuid), "sessionSaveData", "GetLatestSessionSaveDataSlot")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddReadCount(encodeUuid, "sessionSaveData", "GetLatestSessionSaveDataSlot")
 	if err != nil {
 		return -1, err
 	}
@@ -243,7 +254,9 @@ func StoreSessionSaveData(uuid []byte, data defs.SessionSaveData, slot int) erro
 
 	_, err = handle.Exec("REPLACE INTO sessionSaveData (uuid, slot, data, timestamp) VALUES (?, ?, ?, UTC_TIMESTAMP())", uuid, slot, buf.Bytes())
 	dbcount.IncrementRequestCount("sessionSaveData", true)
-	dbcount.AddWriteCount(string(uuid), "sessionSaveData", "StoreSessionSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddWriteCount(encodeUuid, "sessionSaveData", "StoreSessionSaveData")
 	if err != nil {
 		return err
 	}
@@ -254,7 +267,9 @@ func StoreSessionSaveData(uuid []byte, data defs.SessionSaveData, slot int) erro
 func DeleteSessionSaveData(uuid []byte, slot int) error {
 	_, err := handle.Exec("DELETE FROM sessionSaveData WHERE uuid = ? AND slot = ?", uuid, slot)
 	dbcount.IncrementRequestCount("sessionSaveData", true)
-	dbcount.AddWriteCount(string(uuid), "sessionSaveData", "DeleteSessionSaveData")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddWriteCount(encodeUuid, "sessionSaveData", "DeleteSessionSaveData")
 	if err != nil {
 		return err
 	}
@@ -266,7 +281,9 @@ func RetrievePlaytime(uuid []byte) (int, error) {
 	var playtime int
 	err := handle.QueryRow("SELECT playTime FROM accountStats WHERE uuid = ?", uuid).Scan(&playtime)
 	dbcount.IncrementRequestCount("accountStats", false)
-	dbcount.AddReadCount(string(uuid), "accountStats", "RetrievePlaytime")
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddReadCount(encodeUuid, "accountStats", "RetrievePlaytime")
 	if err != nil {
 		return 0, err
 	}

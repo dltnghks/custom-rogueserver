@@ -19,7 +19,7 @@ package account
 
 import (
 	"database/sql"
-	"encoding/base64"
+	//"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -30,12 +30,17 @@ import (
 
 // /account/logout - log out of account
 func Logout(token []byte) error {
-	uuid, err := db.FetchUUIDFromToken(token)
+	_, err := db.FetchUUIDFromToken(token)
 	if err != nil {
 		return fmt.Errorf("failed to fetch UUID from token: %s", err)
 	}
 
+	//encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+
 	err = db.RemoveSessionFromToken(token)
+	//log.Printf("remove!!!!!!&*&^*^*&^*^*^*&^*^*&^*^&*^&*^")
+	//dbcount.Logout(encodeUuid)
+	//log.Printf("logout!!!!!!&*&^*^*&^*^*^*&^*^*&^*^&*^&*^")
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("token not found")
@@ -49,8 +54,6 @@ func Logout(token []byte) error {
 	log.Printf("-------------------------------------------------------")
 
 	dbcount.PrintCount()
-	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
-	dbcount.Logout(encodeUuid)
 
 	return nil
 }
