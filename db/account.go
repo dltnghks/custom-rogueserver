@@ -19,6 +19,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -48,9 +49,11 @@ func AddAccountSession(username string, token []byte) error {
 	uuid, err := FetchUUIDFromUsername(username)
 	if err != nil {
 		// 에러 처리
+		log.Printf("에러 발생1")
 	}
-	dbcount.AddReadCount(string(uuid), "accounts", "AddAccountSession")
-	dbcount.AddWriteCount(string(uuid), "sessions", "AddAccountSession")
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddReadCount(string(encodeUuid), "accounts", "AddAccountSession")
+	dbcount.AddWriteCount(string(encodeUuid), "sessions", "AddAccountSession")
 	//dbcount.LogDBAccess("accounts", "AddAccountSession")
 
 	if err != nil {
@@ -60,7 +63,7 @@ func AddAccountSession(username string, token []byte) error {
 	_, err = handle.Exec("UPDATE accounts SET lastLoggedIn = UTC_TIMESTAMP() WHERE username = ?", username)
 	dbcount.IncrementRequestCount("accounts", true)
 
-	dbcount.AddWriteCount(string(uuid), "accounts", "AddAccountSession")
+	dbcount.AddWriteCount(string(encodeUuid), "accounts", "AddAccountSession")
 
 	if err != nil {
 		return err

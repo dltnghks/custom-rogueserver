@@ -61,8 +61,13 @@ func Login(username, password string) (LoginResponse, error) {
 		return response, fmt.Errorf("failed to fetch UUID: %s", err)
 	}
 
-	dbcount.InitTimer(string(uuid))
-	//dbcount.InitializeRequestCounts(string(uuid))
+	fmt.Println("uuid length:", len(uuid)) // 16이 나와야 정상
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	fmt.Printf("uuid: %v\n", uuid)
+	fmt.Printf("encodedUuid: %s\n", encodeUuid)
+
+	dbcount.InitTimer(string(encodeUuid))
 
 	if err != nil {
 		return response, fmt.Errorf("failed to generate token: %s", err)
