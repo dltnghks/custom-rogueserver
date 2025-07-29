@@ -33,7 +33,7 @@ func AddAccountRecord(uuid []byte, username string, key, salt []byte) error {
 	_, err := handle.Exec("INSERT INTO accounts (uuid, username, hash, salt, registered) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())", uuid, username, key, salt)
 	dbcount.IncrementRequestCount("accounts", true)
 	//dbcount.AddReadCount("accounts", "AddAccountRecord")
-	dbcount.AddWriteCount("accounts", "AddAccountRecord")
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddAccountRecord")
 
 	if err != nil {
 		return err
@@ -45,8 +45,12 @@ func AddAccountRecord(uuid []byte, username string, key, salt []byte) error {
 func AddAccountSession(username string, token []byte) error {
 	_, err := handle.Exec("INSERT INTO sessions (uuid, token, expire) SELECT a.uuid, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 WEEK) FROM accounts a WHERE a.username = ?", token, username)
 	dbcount.IncrementRequestCount("sessions", true)
-	dbcount.AddReadCount("accounts", "AddAccountSession")
-	dbcount.AddWriteCount("sessions", "AddAccountSession")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "AddAccountSession")
+	dbcount.AddWriteCount(string(uuid), "sessions", "AddAccountSession")
 	//dbcount.LogDBAccess("accounts", "AddAccountSession")
 
 	if err != nil {
@@ -55,7 +59,8 @@ func AddAccountSession(username string, token []byte) error {
 
 	_, err = handle.Exec("UPDATE accounts SET lastLoggedIn = UTC_TIMESTAMP() WHERE username = ?", username)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "AddAccountSession")
+
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddAccountSession")
 
 	if err != nil {
 		return err
@@ -67,7 +72,11 @@ func AddAccountSession(username string, token []byte) error {
 func AddDiscordIdByUsername(discordId string, username string) error {
 	_, err := handle.Exec("UPDATE accounts SET discordId = ? WHERE username = ?", discordId, username)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "AddDiscordIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddDiscordIdByUsername")
 
 	if err != nil {
 		return err
@@ -79,7 +88,11 @@ func AddDiscordIdByUsername(discordId string, username string) error {
 func AddGoogleIdByUsername(googleId string, username string) error {
 	_, err := handle.Exec("UPDATE accounts SET googleId = ? WHERE username = ?", googleId, username)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "AddGoogleIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddGoogleIdByUsername")
 
 	if err != nil {
 		return err
@@ -91,7 +104,7 @@ func AddGoogleIdByUsername(googleId string, username string) error {
 func AddGoogleIdByUUID(googleId string, uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET googleId = ? WHERE uuid = ?", googleId, uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "AddGoogleIdByUUID")
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddGoogleIdByUUID")
 
 	if err != nil {
 		return err
@@ -103,7 +116,7 @@ func AddGoogleIdByUUID(googleId string, uuid []byte) error {
 func AddDiscordIdByUUID(discordId string, uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET discordId = ? WHERE uuid = ?", discordId, uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "AddDiscordIdByUUID")
+	dbcount.AddWriteCount(string(uuid), "accounts", "AddDiscordIdByUUID")
 
 	if err != nil {
 		return err
@@ -116,7 +129,15 @@ func FetchUsernameByDiscordId(discordId string) (string, error) {
 	var username string
 	err := handle.QueryRow("SELECT username FROM accounts WHERE discordId = ?", discordId).Scan(&username)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchUsernameByDiscordId")
+	//username, err := FetchUsernameByDiscordId(discordId)
+	//if err != nil {
+	// 에러 처리
+	//}
+	//uuid, err := FetchUUIDFromUsername(username)
+	//if err != nil {
+	// 에러 처리
+	//}
+	dbcount.AddReadCount(string("qwer"), "accounts", "FetchUsernameByDiscordId")
 
 	if err != nil {
 		return "", err
@@ -129,7 +150,8 @@ func FetchUsernameByGoogleId(googleId string) (string, error) {
 	var username string
 	err := handle.QueryRow("SELECT username FROM accounts WHERE googleId = ?", googleId).Scan(&username)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchUsernameByGoogleId")
+
+	dbcount.AddReadCount(string("qwer"), "accounts", "FetchUsernameByGoogleId")
 
 	if err != nil {
 		return "", err
@@ -142,7 +164,11 @@ func FetchDiscordIdByUsername(username string) (string, error) {
 	var discordId sql.NullString
 	err := handle.QueryRow("SELECT discordId FROM accounts WHERE username = ?", username).Scan(&discordId)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchDiscordIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchDiscordIdByUsername")
 
 	if err != nil {
 		return "", err
@@ -159,7 +185,11 @@ func FetchGoogleIdByUsername(username string) (string, error) {
 	var googleId sql.NullString
 	err := handle.QueryRow("SELECT googleId FROM accounts WHERE username = ?", username).Scan(&googleId)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchGoogleIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchGoogleIdByUsername")
 
 	if err != nil {
 		return "", err
@@ -176,7 +206,7 @@ func FetchDiscordIdByUUID(uuid []byte) (string, error) {
 	var discordId sql.NullString
 	err := handle.QueryRow("SELECT discordId FROM accounts WHERE uuid = ?", uuid).Scan(&discordId)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchDiscordIdByUUID")
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchDiscordIdByUUID")
 
 	if err != nil {
 		return "", err
@@ -193,7 +223,7 @@ func FetchGoogleIdByUUID(uuid []byte) (string, error) {
 	var googleId sql.NullString
 	err := handle.QueryRow("SELECT googleId FROM accounts WHERE uuid = ?", uuid).Scan(&googleId)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchGoogleIdByUUID")
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchGoogleIdByUUID")
 
 	if err != nil {
 		return "", err
@@ -210,7 +240,11 @@ func FetchUsernameBySessionToken(token []byte) (string, error) {
 	var username string
 	err := handle.QueryRow("SELECT a.username FROM accounts a JOIN sessions s ON a.uuid = s.uuid WHERE s.token = ?", token).Scan(&username)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchUsernameBySessionToken")
+	uuid, err := FetchUUIDFromToken(token)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchUsernameBySessionToken")
 
 	if err != nil {
 		return "", err
@@ -223,7 +257,11 @@ func CheckUsernameExists(username string) (string, error) {
 	var dbUsername sql.NullString
 	err := handle.QueryRow("SELECT username FROM accounts WHERE username = ?", username).Scan(&dbUsername)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "CheckUsernameExists")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "CheckUsernameExists")
 
 	if err != nil {
 		return "", err
@@ -240,7 +278,11 @@ func FetchLastLoggedInDateByUsername(username string) (string, error) {
 	dbcount.IncrementRequestCount("accounts", false)
 
 	err := handle.QueryRow("SELECT lastLoggedIn FROM accounts WHERE username = ?", username).Scan(&lastLoggedIn)
-	dbcount.AddReadCount("accounts", "FetchLastLoggedInDateByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchLastLoggedInDateByUsername")
 	if err != nil {
 		return "", err
 	}
@@ -265,7 +307,11 @@ func FetchAdminDetailsByUsername(dbUsername string) (AdminSearchResponse, error)
 
 	err := handle.QueryRow("SELECT username, discordId, googleId, lastActivity, registered from accounts WHERE username = ?", dbUsername).Scan(&username, &discordId, &googleId, &lastActivity, &registered)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchAdminDetailsByUsername")
+	uuid, err := FetchUUIDFromUsername(dbUsername)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchAdminDetailsByUsername")
 
 	if err != nil {
 		return adminResponse, err
@@ -285,7 +331,7 @@ func FetchAdminDetailsByUsername(dbUsername string) (AdminSearchResponse, error)
 func UpdateAccountPassword(uuid, key, salt []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET (hash, salt) VALUES (?, ?) WHERE uuid = ?", key, salt, uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "UpdateAccountPassword")
+	dbcount.AddWriteCount(string(uuid), "accounts", "UpdateAccountPassword")
 
 	if err != nil {
 		return err
@@ -297,7 +343,7 @@ func UpdateAccountPassword(uuid, key, salt []byte) error {
 func UpdateAccountLastActivity(uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET lastActivity = UTC_TIMESTAMP() WHERE uuid = ?", uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "UpdateAccountLastActivity")
+	dbcount.AddWriteCount(string(uuid), "accounts", "UpdateAccountLastActivity")
 
 	if err != nil {
 		return err
@@ -378,7 +424,7 @@ func UpdateAccountStats(uuid []byte, stats defs.GameStats, voucherCounts map[str
 
 	_, err := handle.Exec(query, statArgs...)
 	dbcount.IncrementRequestCount("accountStats", true)
-	dbcount.AddWriteCount("accountStats", "UpdateAccountStats")
+	dbcount.AddWriteCount(string(uuid), "accountStats", "UpdateAccountStats")
 
 	if err != nil {
 		return err
@@ -390,7 +436,7 @@ func UpdateAccountStats(uuid []byte, stats defs.GameStats, voucherCounts map[str
 func SetAccountBanned(uuid []byte, banned bool) error {
 	_, err := handle.Exec("UPDATE accounts SET banned = ? WHERE uuid = ?", banned, uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "SetAccountBanned")
+	dbcount.AddWriteCount(string(uuid), "accounts", "SetAccountBanned")
 
 	if err != nil {
 		return err
@@ -403,7 +449,11 @@ func FetchAccountKeySaltFromUsername(username string) ([]byte, []byte, error) {
 	var key, salt []byte
 	err := handle.QueryRow("SELECT hash, salt FROM accounts WHERE username = ?", username).Scan(&key, &salt)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchAccountKeySaltFromUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchAccountKeySaltFromUsername")
 
 	if err != nil {
 		return nil, nil, err
@@ -415,7 +465,7 @@ func FetchAccountKeySaltFromUsername(username string) ([]byte, []byte, error) {
 func FetchTrainerIds(uuid []byte) (trainerId, secretId int, err error) {
 	err = handle.QueryRow("SELECT trainerId, secretId FROM accounts WHERE uuid = ?", uuid).Scan(&trainerId, &secretId)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchTrainerIds")
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchTrainerIds")
 
 	if err != nil {
 		return 0, 0, err
@@ -427,7 +477,7 @@ func FetchTrainerIds(uuid []byte) (trainerId, secretId int, err error) {
 func UpdateTrainerIds(trainerId, secretId int, uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET trainerId = ?, secretId = ? WHERE uuid = ?", trainerId, secretId, uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "UpdateTrainerIds")
+	dbcount.AddWriteCount(string(uuid), "accounts", "UpdateTrainerIds")
 
 	if err != nil {
 		return err
@@ -440,7 +490,7 @@ func IsActiveSession(uuid []byte, sessionId string) (bool, error) {
 	var id string
 	err := handle.QueryRow("SELECT clientSessionId FROM activeClientSessions WHERE uuid = ?", uuid).Scan(&id)
 	dbcount.IncrementRequestCount("activeClientSessions", false)
-	dbcount.AddReadCount("activeClientSessions", "IsActiveSession")
+	dbcount.AddReadCount(string(uuid), "activeClientSessions", "IsActiveSession")
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -461,7 +511,7 @@ func IsActiveSession(uuid []byte, sessionId string) (bool, error) {
 func UpdateActiveSession(uuid []byte, clientSessionId string) error {
 	_, err := handle.Exec("INSERT INTO activeClientSessions (uuid, clientSessionId) VALUES (?, ?) ON DUPLICATE KEY UPDATE clientSessionId = ?", uuid, clientSessionId, clientSessionId)
 	dbcount.IncrementRequestCount("activeClientSessions", true)
-	dbcount.AddWriteCount("activeClientSessions", "UpdateActiveSession")
+	dbcount.AddWriteCount(string(uuid), "activeClientSessions", "UpdateActiveSession")
 
 	if err != nil {
 		return err
@@ -476,7 +526,8 @@ func FetchUUIDFromToken(token []byte) ([]byte, error) {
 	var uuid []byte
 	err := handle.QueryRow("SELECT uuid FROM sessions WHERE token = ?", token).Scan(&uuid)
 	dbcount.IncrementRequestCount("sessions", false)
-	dbcount.AddReadCount("sessions", "FetchUUIDFromToken")
+
+	dbcount.AddReadCount(string(uuid), "sessions", "FetchUUIDFromToken")
 	//dbcount.LogDBAccess("sessions", "FetchUUIDFromToken")
 
 	if err != nil {
@@ -489,7 +540,11 @@ func FetchUUIDFromToken(token []byte) ([]byte, error) {
 func RemoveSessionFromToken(token []byte) error {
 	_, err := handle.Exec("DELETE FROM sessions WHERE token = ?", token)
 	dbcount.IncrementRequestCount("sessions", true)
-	dbcount.AddWriteCount("sessions", "RemoveSessionFromToken")
+	uuid, err := FetchUUIDFromToken(token)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "sessions", "RemoveSessionFromToken")
 
 	if err != nil {
 		return err
@@ -502,7 +557,7 @@ func FetchUsernameFromUUID(uuid []byte) (string, error) {
 	var username string
 	err := handle.QueryRow("SELECT username FROM accounts WHERE uuid = ?", uuid).Scan(&username)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchUsernameFromUUID")
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchUsernameFromUUID")
 
 	if err != nil {
 		return "", err
@@ -515,7 +570,8 @@ func FetchUUIDFromUsername(username string) ([]byte, error) {
 	var uuid []byte
 	err := handle.QueryRow("SELECT uuid FROM accounts WHERE username = ?", username).Scan(&uuid)
 	dbcount.IncrementRequestCount("accounts", false)
-	dbcount.AddReadCount("accounts", "FetchUUIDFromUsername")
+
+	dbcount.AddReadCount(string(uuid), "accounts", "FetchUUIDFromUsername")
 
 	if err != nil {
 		return nil, err
@@ -527,7 +583,7 @@ func FetchUUIDFromUsername(username string) ([]byte, error) {
 func RemoveDiscordIdByUUID(uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET discordId = NULL WHERE uuid = ?", uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveDiscordIdByUUID")
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveDiscordIdByUUID")
 
 	if err != nil {
 		return err
@@ -539,7 +595,7 @@ func RemoveDiscordIdByUUID(uuid []byte) error {
 func RemoveGoogleIdByUUID(uuid []byte) error {
 	_, err := handle.Exec("UPDATE accounts SET googleId = NULL WHERE uuid = ?", uuid)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveGoogleIdByUUID")
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveGoogleIdByUUID")
 
 	if err != nil {
 		return err
@@ -551,7 +607,11 @@ func RemoveGoogleIdByUUID(uuid []byte) error {
 func RemoveGoogleIdByUsername(username string) error {
 	_, err := handle.Exec("UPDATE accounts SET googleId = NULL WHERE username = ?", username)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveGoogleIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveGoogleIdByUsername")
 
 	if err != nil {
 		return err
@@ -563,7 +623,11 @@ func RemoveGoogleIdByUsername(username string) error {
 func RemoveDiscordIdByUsername(username string) error {
 	_, err := handle.Exec("UPDATE accounts SET discordId = NULL WHERE username = ?", username)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveDiscordIdByUsername")
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveDiscordIdByUsername")
 
 	if err != nil {
 		return err
@@ -575,7 +639,15 @@ func RemoveDiscordIdByUsername(username string) error {
 func RemoveDiscordIdByDiscordId(discordId string) error {
 	_, err := handle.Exec("UPDATE accounts SET discordId = NULL WHERE discordId = ?", discordId)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveDiscordIdByDiscordId")
+	username, err := FetchUsernameByDiscordId(discordId)
+	if err != nil {
+		// 에러 처리
+	}
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveDiscordIdByDiscordId")
 
 	if err != nil {
 		return err
@@ -587,7 +659,15 @@ func RemoveDiscordIdByDiscordId(discordId string) error {
 func RemoveGoogleIdByDiscordId(discordId string) error {
 	_, err := handle.Exec("UPDATE accounts SET googleId = NULL WHERE discordId = ?", discordId)
 	dbcount.IncrementRequestCount("accounts", true)
-	dbcount.AddWriteCount("accounts", "RemoveGoogleIdByDiscordId")
+	username, err := FetchUsernameByDiscordId(discordId)
+	if err != nil {
+		// 에러 처리
+	}
+	uuid, err := FetchUUIDFromUsername(username)
+	if err != nil {
+		// 에러 처리
+	}
+	dbcount.AddWriteCount(string(uuid), "accounts", "RemoveGoogleIdByDiscordId")
 
 	if err != nil {
 		return err

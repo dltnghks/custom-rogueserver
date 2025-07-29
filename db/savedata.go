@@ -75,7 +75,7 @@ func ReadSystemSaveData(uuid []byte) (defs.SystemSaveData, error) {
 	var data []byte
 	err := handle.QueryRow("SELECT data FROM systemSaveData WHERE uuid = ?", uuid).Scan(&data)
 	dbcount.IncrementRequestCount("systemSaveData", false)
-	dbcount.AddReadCount("systemSaveData", "ReadSystemSaveData")
+	dbcount.AddReadCount(string(uuid), "systemSaveData", "ReadSystemSaveData")
 
 	if err != nil {
 		log.Println("Not Find Data")
@@ -132,7 +132,7 @@ func StoreSystemSaveData(uuid []byte, data defs.SystemSaveData) error {
 
 	_, err = handle.Exec("REPLACE INTO systemSaveData (uuid, data, timestamp) VALUES (?, ?, UTC_TIMESTAMP())", uuid, buf.Bytes())
 	dbcount.IncrementRequestCount("systemSaveData", true)
-	dbcount.AddWriteCount("systemSaveData", "StoreSystemSaveData")
+	dbcount.AddWriteCount(string(uuid), "systemSaveData", "StoreSystemSaveData")
 
 	if err != nil {
 		return err
@@ -175,7 +175,7 @@ func StoreSystemSaveDataS3(uuid []byte, data defs.SystemSaveData) error {
 func DeleteSystemSaveData(uuid []byte) error {
 	_, err := handle.Exec("DELETE FROM systemSaveData WHERE uuid = ?", uuid)
 	dbcount.IncrementRequestCount("systemSaveData", true)
-	dbcount.AddWriteCount("systemSaveData", "DeleteSystemSaveData")
+	dbcount.AddWriteCount(string(uuid), "systemSaveData", "DeleteSystemSaveData")
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func ReadSessionSaveData(uuid []byte, slot int) (defs.SessionSaveData, error) {
 	var data []byte
 	err := handle.QueryRow("SELECT data FROM sessionSaveData WHERE uuid = ? AND slot = ?", uuid, slot).Scan(&data)
 	dbcount.IncrementRequestCount("sessionSaveData", false)
-	dbcount.AddReadCount("sessionSaveData", "ReadSessionSaveData")
+	dbcount.AddReadCount(string(uuid), "sessionSaveData", "ReadSessionSaveData")
 
 	if err != nil {
 		return session, err
@@ -215,7 +215,7 @@ func GetLatestSessionSaveDataSlot(uuid []byte) (int, error) {
 	var slot int
 	err := handle.QueryRow("SELECT slot FROM sessionSaveData WHERE uuid = ? ORDER BY timestamp DESC, slot ASC LIMIT 1", uuid).Scan(&slot)
 	dbcount.IncrementRequestCount("sessionSaveData", false)
-	dbcount.AddReadCount("sessionSaveData", "GetLatestSessionSaveDataSlot")
+	dbcount.AddReadCount(string(uuid), "sessionSaveData", "GetLatestSessionSaveDataSlot")
 	if err != nil {
 		return -1, err
 	}
@@ -243,7 +243,7 @@ func StoreSessionSaveData(uuid []byte, data defs.SessionSaveData, slot int) erro
 
 	_, err = handle.Exec("REPLACE INTO sessionSaveData (uuid, slot, data, timestamp) VALUES (?, ?, ?, UTC_TIMESTAMP())", uuid, slot, buf.Bytes())
 	dbcount.IncrementRequestCount("sessionSaveData", true)
-	dbcount.AddWriteCount("sessionSaveData", "StoreSessionSaveData")
+	dbcount.AddWriteCount(string(uuid), "sessionSaveData", "StoreSessionSaveData")
 	if err != nil {
 		return err
 	}
@@ -254,7 +254,7 @@ func StoreSessionSaveData(uuid []byte, data defs.SessionSaveData, slot int) erro
 func DeleteSessionSaveData(uuid []byte, slot int) error {
 	_, err := handle.Exec("DELETE FROM sessionSaveData WHERE uuid = ? AND slot = ?", uuid, slot)
 	dbcount.IncrementRequestCount("sessionSaveData", true)
-	dbcount.AddWriteCount("sessionSaveData", "DeleteSessionSaveData")
+	dbcount.AddWriteCount(string(uuid), "sessionSaveData", "DeleteSessionSaveData")
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func RetrievePlaytime(uuid []byte) (int, error) {
 	var playtime int
 	err := handle.QueryRow("SELECT playTime FROM accountStats WHERE uuid = ?", uuid).Scan(&playtime)
 	dbcount.IncrementRequestCount("accountStats", false)
-	dbcount.AddReadCount("accountStats", "RetrievePlaytime")
+	dbcount.AddReadCount(string(uuid), "accountStats", "RetrievePlaytime")
 	if err != nil {
 		return 0, err
 	}

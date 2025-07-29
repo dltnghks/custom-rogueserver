@@ -34,11 +34,6 @@ type LoginResponse GenericAuthResponse
 // /account/login - log into account
 func Login(username, password string) (LoginResponse, error) {
 	var response LoginResponse
-	dbcount.InitTimer()
-
-	dbcount.InitializeRequestCounts()
-
-	//log.Printf("username : %s", username)
 
 	if !isValidUsername(username) {
 		return response, fmt.Errorf("invalid username")
@@ -61,7 +56,13 @@ func Login(username, password string) (LoginResponse, error) {
 		return response, fmt.Errorf("password doesn't match")
 	}
 
-	response.Token, err = GenerateTokenForUsername(username)
+	uuid, err := db.FetchUUIDFromUsername(username)
+	if err != nil {
+		return response, fmt.Errorf("failed to fetch UUID: %s", err)
+	}
+
+	dbcount.InitTimer(string(uuid))
+	//dbcount.InitializeRequestCounts(string(uuid))
 
 	if err != nil {
 		return response, fmt.Errorf("failed to generate token: %s", err)

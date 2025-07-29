@@ -29,7 +29,12 @@ import (
 
 // /account/logout - log out of account
 func Logout(token []byte) error {
-	err := db.RemoveSessionFromToken(token)
+	uuid, err := db.FetchUUIDFromToken(token)
+	if err != nil {
+		return fmt.Errorf("failed to fetch UUID from token: %s", err)
+	}
+
+	err = db.RemoveSessionFromToken(token)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("token not found")
@@ -38,12 +43,12 @@ func Logout(token []byte) error {
 		return fmt.Errorf("failed to remove account session")
 	}
 
-	dbcount.PrintRequestCounts()
+	//dbcount.PrintRequestCounts(string(uuid))
 
 	log.Printf("-------------------------------------------------------")
 
 	dbcount.PrintCount()
-	dbcount.Logout()
+	dbcount.Logout(string(uuid))
 
 	return nil
 }

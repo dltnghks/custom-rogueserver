@@ -93,30 +93,32 @@ var fetchRankings string = "fetchRankings"
 var getDailyRunSeed string = "getDailyRunSeed"
 
 var initTime time.Time
-var csvWriter *csv.Writer
-var csvFile *os.File
+var csvWriters = make(map[string]*csv.Writer)
+var csvFiles = make(map[string]*os.File)
 var mut sync.Mutex
 
-func InitTimer() error {
+func InitTimer(uuid string) error {
 	initTime = time.Now()
 	log.Printf("init 시작 시간 : %s", initTime.Format("time.RFC3339Nano"))
 
 	var err error
 
-	err = os.MkdirAll("/home/user/duream/Write-back/custom-rogueserver/csv", 0777)
+	err = os.MkdirAll("/app/csv/", 0777)
 	if err != nil {
 		log.Fatalf("Failed to create directory: %v", err)
 		return fmt.Errorf("디렉토리 생성 실패: %w", err)
 	}
 
-	csvFile, err = os.Create("/app/csv/player_test_db_access_count.csv")
+	fileName := fmt.Sprintf("/app/csv/%s_db_access_count.csv", uuid)
+	csvFile, err := os.Create(fileName)
 	if err != nil {
 		log.Fatalf("Failed to create CSV file: %v", err)
 	}
 
-	csvWriter = csv.NewWriter(csvFile)
+	csvFiles[uuid] = csvFile
+	csvWriters[uuid] = csv.NewWriter(csvFile)
 
-	err = csvWriter.Write([]string{"Table Name", "Function Name", "Time", "R/W", "data1", "data2", "data3", "data4", "data5"})
+	err = csvWriters[uuid].Write([]string{"Table Name", "Function Name", "Time", "R/W", "data1", "data2", "data3", "data4", "data5"})
 	if err != nil {
 		return fmt.Errorf("CSV 헤더 작성 실패: %w", err)
 	}
@@ -124,11 +126,18 @@ func InitTimer() error {
 	return nil
 }
 
-func LogDBAccess(tableName string, funcName string, RW string, data1 string, data2 string, data3 string, data4 string, data5 string) {
+func LogDBAccess(uuid string, tableName string, funcName string, RW string, data1 string, data2 string, data3 string, data4 string, data5 string) {
 	mut.Lock()
 	defer mut.Unlock()
+
+	csvWriter, ok := csvWriters[uuid]
+	if !ok {
+		// Initialize for new UUID
+		InitTimer(uuid)
+		csvWriter = csvWriters[uuid]
+	}
+
 	elapsedTime := time.Since(initTime).Seconds()
-	//log.Printf("DB Access +%.3fs tableName=%s funcName=%s", elapsedTime, tableName, funcName)
 	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
 
 	csvWriter.Write(record)
@@ -140,12 +149,18 @@ func LogDBAccess(tableName string, funcName string, RW string, data1 string, dat
 	csvWriter.Flush()
 }
 
-func Logout() {
+func Logout(uuid string) {
 	totalElapsed := time.Since(initTime).Seconds()
 	log.Printf("Logout game end and total time: +%.3fs", totalElapsed)
-	if csvFile != nil {
-		csvWriter.Flush()
+
+	mut.Lock()
+	defer mut.Unlock()
+
+	if csvFile, ok := csvFiles[uuid]; ok {
+		csvWriters[uuid].Flush()
 		csvFile.Close()
+		delete(csvFiles, uuid)
+		delete(csvWriters, uuid)
 	}
 	log.Printf("csv 저장 완료.")
 }
@@ -200,7 +215,7 @@ func PrintCount() {
 	log.Printf("Unknown table name: %d", unkownTableNum)
 }
 
-func AddReadCount(tableName string, funcName string) {
+func AddReadCount(uuid string, tableName string, funcName string) {
 	switch tableName {
 	case "accounts":
 		countReadAccounts++
@@ -209,52 +224,52 @@ func AddReadCount(tableName string, funcName string) {
 			tokenNum++
 			expireNum++
 			log.Printf("AddAccountSession Read uuid, expire : %d, %d, %d", uuidNum, tokenNum, expireNum)
-			LogDBAccess("accounts", "AddAccountSession", "R", uuid, token, expire, "", "")
+			LogDBAccess(uuid, "accounts", "AddAccountSession", "R", uuid, token, expire, "", "")
 		}
 		if "FetchUsernameByDiscordId" == funcName {
 			userNameNum++
 			log.Printf("username : %d", userNameNum)
-			LogDBAccess("accounts", "FetchUsernameByDiscordId", "R", userName, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUsernameByDiscordId", "R", userName, "", "", "", "")
 		}
 		if "FetchUsernameByGoogleId" == funcName {
 			userNameNum++
 			log.Printf("username : %d", userNameNum)
-			LogDBAccess("accounts", "FetchUsernameByGoogleId", "R", userName, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUsernameByGoogleId", "R", userName, "", "", "", "")
 		}
 		if "FetchDiscordIdByUsername" == funcName {
 			discordIdNum++
 			log.Printf("discordIdNum : %d", discordIdNum)
-			LogDBAccess("accounts", "FetchDiscordIdByUsername", "R", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchDiscordIdByUsername", "R", discordId, "", "", "", "")
 		}
 		if "FetchGoogleIdByUsername" == funcName {
 			googleIdNum++
 			log.Printf("googleIdNum : %d", googleIdNum)
-			LogDBAccess("accounts", "FetchGoogleIdByUsername", "R", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchGoogleIdByUsername", "R", googleId, "", "", "", "")
 		}
 		if "FetchDiscordIdByUUID" == funcName {
 			discordIdNum++
 			log.Printf("discordIdNum : %d", discordIdNum)
-			LogDBAccess("accounts", "FetchDiscordIdByUUID", "R", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchDiscordIdByUUID", "R", discordId, "", "", "", "")
 		}
 		if "FetchGoogleIdByUUID" == funcName {
 			googleIdNum++
 			log.Printf("googleIdNum : %d", googleIdNum)
-			LogDBAccess("accounts", "FetchGoogleIdByUUID", "R", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchGoogleIdByUUID", "R", googleId, "", "", "", "")
 		}
 		if "FetchUsernameBySessionToken" == funcName {
 			userNameNum++
 			log.Printf("username : %d", userNameNum)
-			LogDBAccess("accounts", "FetchUsernameBySessionToken", "R", userName, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUsernameBySessionToken", "R", userName, "", "", "", "")
 		}
 		if "CheckUsernameExists" == funcName {
 			dbUsernameNum++
 			log.Printf("dbusernameNum : %d", dbUsernameNum)
-			LogDBAccess("accounts", "CheckUsernameExists", "R", dbUsername, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "CheckUsernameExists", "R", dbUsername, "", "", "", "")
 		}
 		if "FetchLastLoggedInDateByUsername" == funcName {
 			lastLoggedInNum++
 			log.Printf("lastLoggedIn : %d", lastLoggedInNum)
-			LogDBAccess("accounts", "FetchLastLoggedInDateByUsername", "R", lastLoggedIn, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchLastLoggedInDateByUsername", "R", lastLoggedIn, "", "", "", "")
 		}
 		if "FetchAdminDetailsByUsername" == funcName {
 			userNameNum++
@@ -263,53 +278,53 @@ func AddReadCount(tableName string, funcName string) {
 			lastActivityNum++
 			registeredNum++
 			log.Printf("username : %d, discordIdNum : %d, googleIdNum : %d lastActivity : %d, registered : %d", userNameNum, discordIdNum, googleIdNum, lastActivityNum, registeredNum)
-			LogDBAccess("accounts", "FetchAdminDetailsByUsername", "R", userName, discordId, googleId, lastActivity, registered)
+			LogDBAccess(uuid, "accounts", "FetchAdminDetailsByUsername", "R", userName, discordId, googleId, lastActivity, registered)
 		}
 		if "FetchAccountKeySaltFromUsername" == funcName {
 			keyNum++
 			saltNum++
 			log.Printf("keyNum : %d, saltNum : %d", keyNum, saltNum)
-			LogDBAccess("accounts", "FetchAccountKeySaltFromUsername", "R", key, salt, "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchAccountKeySaltFromUsername", "R", key, salt, "", "", "")
 		}
 		if "FetchTrainerIds" == funcName {
 			trainerIDNum++
 			secretIDNum++
 			log.Printf("trainerId : %d, secretId : %d", trainerIDNum, secretIDNum)
-			LogDBAccess("accounts", "FetchTrainerIds", "R", trainerID, secretID, "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchTrainerIds", "R", trainerID, secretID, "", "", "")
 		}
 		if "FetchUUIDFromToken" == funcName {
 			uuidNum++
 			log.Printf("uuidNum : %d", uuidNum)
-			LogDBAccess("accounts", "FetchUUIDFromToken", "R", uuid, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUUIDFromToken", "R", uuid, "", "", "", "")
 		}
 		if "FetchUsernameFromUUID" == funcName {
 			userNameNum++
 			log.Printf("username : %d", userNameNum)
-			LogDBAccess("accounts", "FetchUsernameFromUUID", "R", userName, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUsernameFromUUID", "R", userName, "", "", "", "")
 		}
 		if "FetchUUIDFromUsername" == funcName {
 			uuidNum++
 			log.Printf("uuidNum : %d", uuidNum)
-			LogDBAccess("accounts", "FetchUUIDFromUsername", "R", uuid, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchUUIDFromUsername", "R", uuid, "", "", "", "")
 		}
 		//account.go end.
 
 		if "FetchPlayerCount" == funcName {
 			lastActivityNum++
 			log.Printf("FetchPlayerCount lastActivityNum : %d", lastActivityNum)
-			LogDBAccess("accounts", "FetchPlayerCount", "R", lastActivity, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchPlayerCount", "R", lastActivity, "", "", "", "")
 		}
 		if "FetchBattleCount" == funcName {
 			bannedNum++
 			//battleCountNum++
 			log.Printf("FetchBattleCount bannedNum: %d", bannedNum)
-			LogDBAccess("accounts", "FetchBattleCount", "R", banned, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchBattleCount", "R", banned, "", "", "", "")
 			//log.Printf("FetchBattleCount!")
 		}
 		if "FetchClassicSessionCount" == funcName {
 			classicSessionPlayedCountNum++
 			log.Printf("FetchClassicSessionCount : %d", classicSessionPlayedCountNum)
-			LogDBAccess("accounts", "FetchClassicSessionCount", "R", classicSessionPlayedCount, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "FetchClassicSessionCount", "R", classicSessionPlayedCount, "", "", "", "")
 		}
 		//game.go 항목 추가.
 
@@ -318,19 +333,19 @@ func AddReadCount(tableName string, funcName string) {
 		if "FetchBattleCount" == funcName {
 			battleCountNum++
 			log.Printf("FetchBattleCount battleCountNum : %d", battleCountNum)
-			LogDBAccess("accountStats", "FetchBattleCount", "R", battleCount, "", "", "", "")
+			LogDBAccess(uuid, "accountStats", "FetchBattleCount", "R", battleCount, "", "", "", "")
 		}
 		if "FetchClassicSessionCount" == funcName {
 			classicSessionPlayedCountNum++
 			log.Printf("FetchClassicSessionPlayedCount : %d", classicSessionPlayedCountNum)
-			LogDBAccess("accountStats", "FetchClassicSessionCount", "R", classicSessionPlayedCount, "", "", "", "")
+			LogDBAccess(uuid, "accountStats", "FetchClassicSessionCount", "R", classicSessionPlayedCount, "", "", "", "")
 		}
 		//game.go 항목 추가.
 
 		if "RetrievePlaytime" == funcName {
 			playtimeNum++
 			log.Printf("RetrievePlaytime playtimeNum : %d", playtimeNum)
-			LogDBAccess("accountStats", "RetrievePlaytime", "R", playtime, "", "", "", "")
+			LogDBAccess(uuid, "accountStats", "RetrievePlaytime", "R", playtime, "", "", "", "")
 		}
 		//savedata.go 항목 추가.
 
@@ -339,20 +354,20 @@ func AddReadCount(tableName string, funcName string) {
 		if "FetchUUIDFromToken" == funcName {
 			uuidNum++
 			log.Printf("FetchUUIDFromToken uuidNum : %d", uuidNum)
-			LogDBAccess("sessions", "FetchUUIDFromToken", "R", uuid, "", "", "", "")
+			LogDBAccess(uuid, "sessions", "FetchUUIDFromToken", "R", uuid, "", "", "", "")
 		}
 	case "sessionSaveData":
 		countReadSessionSaveData++
 		if "ReadSessionSaveData" == funcName {
 			dataNum++
 			log.Printf("ReadSessionSaveData dataNum : %d", dataNum)
-			LogDBAccess("sessionSaveData", "ReadSessionSaveData", "R", data, "", "", "", "")
+			LogDBAccess(uuid, "sessionSaveData", "ReadSessionSaveData", "R", data, "", "", "", "")
 			//log.Printf("ReadSessionSaveData!")
 		}
 		if "GetLatestSessionSaveDataSlot" == funcName {
 			slotNum++
 			log.Printf("GetLatestSessionSaveDataSlot slotNum : %d", slotNum)
-			LogDBAccess("sessionSaveData", "GetLatestSessionSaveDataSlot", "R", slot, "", "", "", "")
+			LogDBAccess(uuid, "sessionSaveData", "GetLatestSessionSaveDataSlot", "R", slot, "", "", "", "")
 			//log.Printf("GetLatestSessionSaveDataSlot!")
 		}
 
@@ -361,7 +376,7 @@ func AddReadCount(tableName string, funcName string) {
 		if "IsActiveSession" == funcName {
 			idNum++
 			log.Printf("IsActiveSession idNum : %d", idNum)
-			LogDBAccess("activeClientSessions", "IsActiveSession", "R", id, "", "", "", "")
+			LogDBAccess(uuid, "activeClientSessions", "IsActiveSession", "R", id, "", "", "", "")
 		}
 
 	case "systemSaveData":
@@ -369,7 +384,7 @@ func AddReadCount(tableName string, funcName string) {
 		if "ReadSystemSaveData" == funcName {
 			dataNum++
 			log.Printf("ReadSystemSaveData dataNum : %d", dataNum)
-			LogDBAccess("systemSaveData", "ReadSystemSaveData", "R", data, "", "", "", "")
+			LogDBAccess(uuid, "systemSaveData", "ReadSystemSaveData", "R", data, "", "", "", "")
 			//log.Printf("ReadSystemSaveData!")
 		}
 
@@ -379,7 +394,7 @@ func AddReadCount(tableName string, funcName string) {
 	}
 }
 
-func AddWriteCount(tableName string, funcName string) {
+func AddWriteCount(uuid string, tableName string, funcName string) {
 	switch tableName {
 	case "accounts":
 		countWriteAccounts++
@@ -390,85 +405,85 @@ func AddWriteCount(tableName string, funcName string) {
 			saltNum++
 			registeredNum++
 			log.Printf("INSERT uuid, username, hash, salt, registered : %d, %d, %d, %d, %d", uuidNum, userNameNum, hashNum, saltNum, registeredNum)
-			LogDBAccess("accounts", "AddAccountRecord", "W", uuid, userName, hash, salt, registered)
+			LogDBAccess(uuid, "accounts", "AddAccountRecord", "W", uuid, userName, hash, salt, registered)
 		}
 		if "AddAccountSession" == funcName {
 			lastLoggedInNum++
 			log.Printf("Update lastLoggedIn : %d", lastLoggedInNum)
-			LogDBAccess("accounts", "AddAccountSession", "W", lastLoggedIn, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "AddAccountSession", "W", lastLoggedIn, "", "", "", "")
 		}
 		if "AddDiscordIdByUsername" == funcName {
 			discordIdNum++
 			log.Printf("Update discordId : %d", discordIdNum)
-			LogDBAccess("accounts", "AddDiscordIdByUsername", "W", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "AddDiscordIdByUsername", "W", discordId, "", "", "", "")
 		}
 		if "AddGoogleIdByUsername" == funcName {
 			googleIdNum++
 			log.Printf("Update googleId : %d", googleIdNum)
-			LogDBAccess("accounts", "AddGoogleIdByUsername", "W", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "AddGoogleIdByUsername", "W", googleId, "", "", "", "")
 		}
 		if "AddGoogleIdByUUID" == funcName {
 			googleIdNum++
 			log.Printf("Update googleId : %d", googleIdNum)
-			LogDBAccess("accounts", "AddGoogleIdByUUID", "W", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "AddGoogleIdByUUID", "W", googleId, "", "", "", "")
 		}
 		if "AddDiscordIdByUUID" == funcName {
 			discordIdNum++
 			log.Printf("Update discordId : %d", discordIdNum)
-			LogDBAccess("accounts", "AddDiscordIdByUUID", "W", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "AddDiscordIdByUUID", "W", discordId, "", "", "", "")
 		}
 		if "UpdateAccountPassword" == funcName {
 			keyNum++
 			saltNum++
 			log.Printf("Update key, salt : %d, %d", keyNum, saltNum)
-			LogDBAccess("accounts", "UpdateAccountPassword", "W", key, salt, "", "", "")
+			LogDBAccess(uuid, "accounts", "UpdateAccountPassword", "W", key, salt, "", "", "")
 		}
 		if "UpdateAccountLastActivity" == funcName {
 			lastActivityNum++
 			//lastLoggedInNum++
 			log.Printf("Update lastActivity : %d", lastActivityNum)
-			LogDBAccess("accounts", "UpdateAccountLastActivity", "W", lastActivity, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "UpdateAccountLastActivity", "W", lastActivity, "", "", "", "")
 		}
 		if "SetAccountBanned" == funcName {
 			bannedNum++
 			log.Printf("Update banned : %d", bannedNum)
-			LogDBAccess("accounts", "SetAccountBanned", "W", banned, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "SetAccountBanned", "W", banned, "", "", "", "")
 		}
 		if "UpdateTrainerIds" == funcName {
 			trainerIDNum++
 			secretIDNum++
 			log.Printf("Update trainerId, secretId : %d, %d", trainerIDNum, secretIDNum)
-			LogDBAccess("accounts", "UpdateTrainerIds", "W", trainerID, secretID, "", "", "")
+			LogDBAccess(uuid, "accounts", "UpdateTrainerIds", "W", trainerID, secretID, "", "", "")
 		}
 		if "RemoveDiscordIdByUUID" == funcName {
 			discordIdNum++
 			log.Printf("Update discordId : %d", discordIdNum)
-			LogDBAccess("accounts", "RemoveDiscordIdByUUID", "W", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveDiscordIdByUUID", "W", discordId, "", "", "", "")
 		}
 		if "RemoveGoogleIdByUUID" == funcName {
 			googleIdNum++
 			log.Printf("Updat googleId : %d", googleIdNum)
-			LogDBAccess("accounts", "RemoveGoogleIdByUUID", "W", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveGoogleIdByUUID", "W", googleId, "", "", "", "")
 		}
 		if "RemoveGoogleIdByUsername" == funcName {
 			googleIdNum++
 			log.Printf("Update googleId : %d", googleIdNum)
-			LogDBAccess("accounts", "RemoveGoogleIdByUsername", "W", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveGoogleIdByUsername", "W", googleId, "", "", "", "")
 		}
 		if "RemoveDiscordIdByUsername" == funcName {
 			discordIdNum++
 			log.Printf("Update discordId : %d", discordIdNum)
-			LogDBAccess("accounts", "RemoveDiscordIdByUsername", "W", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveDiscordIdByUsername", "W", discordId, "", "", "", "")
 		}
 		if "RemoveDiscordIdByDiscordId" == funcName {
 			discordIdNum++
 			log.Printf("Update discordId : %d", discordIdNum)
-			LogDBAccess("accounts", "RemoveDiscordIdByDiscordId", "W", discordId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveDiscordIdByDiscordId", "W", discordId, "", "", "", "")
 		}
 		if "RemoveGoogleIdByDiscordId" == funcName {
 			googleIdNum++
 			log.Printf("Update googleId : %d", googleIdNum)
-			LogDBAccess("accounts", "RemoveGoogleIdByDiscordId", "W", googleId, "", "", "", "")
+			LogDBAccess(uuid, "accounts", "RemoveGoogleIdByDiscordId", "W", googleId, "", "", "", "")
 		}
 		//account.go 항목 추가.
 
@@ -477,7 +492,7 @@ func AddWriteCount(tableName string, funcName string) {
 		if "UpdateAccountStats" == funcName {
 			statsNum++
 			log.Printf("Insert stats playtime, battles, classicSessionPlayed 등..: %d", statsNum)
-			LogDBAccess("accountStats", "UpdateAccountStats", "W", stats, "", "", "", "")
+			LogDBAccess(uuid, "accountStats", "UpdateAccountStats", "W", stats, "", "", "", "")
 		}
 
 	case "sessions":
@@ -487,12 +502,12 @@ func AddWriteCount(tableName string, funcName string) {
 			tokenNum++
 			expireNum++
 			log.Printf("INSERT uuid, token, expire : %d, %d, %d", uuidNum, tokenNum, expireNum)
-			LogDBAccess("sessions", "AddAccountSession", "W", uuid, token, expire, "", "")
+			LogDBAccess(uuid, "sessions", "AddAccountSession", "W", uuid, token, expire, "", "")
 		}
 		if "RemoveSessionFromToken" == funcName {
 			tokenNum++
 			log.Printf("Remove token : %d", tokenNum)
-			LogDBAccess("sessions", "RemoveSessionFromToken", "W", token, "", "", "", "")
+			LogDBAccess(uuid, "sessions", "RemoveSessionFromToken", "W", token, "", "", "", "")
 		}
 
 	case "sessionSaveData":
@@ -503,12 +518,12 @@ func AddWriteCount(tableName string, funcName string) {
 			dataNum++
 			timeStampNum++
 			log.Printf("StoreSessionSaveData uuid, slot, data, timestamp : %d, %d, %d, %d", uuidNum, slotNum, dataNum, timeStampNum)
-			LogDBAccess("sessionSaveData", "StoreSessionSaveData", "W", uuid, slot, data, timeStamp, "")
+			LogDBAccess(uuid, "sessionSaveData", "StoreSessionSaveData", "W", uuid, slot, data, timeStamp, "")
 		}
 		if "DeleteSessionSaveData" == funcName {
 			sessionSaveDataNum++
 			log.Printf("DeleteSessionSaveData sessionSaveDataNum : %d", sessionSaveDataNum)
-			LogDBAccess("sessionSaveData", "DeleteSessionSaveData", "W", sessionSaveData, "", "", "", "")
+			LogDBAccess(uuid, "sessionSaveData", "DeleteSessionSaveData", "W", sessionSaveData, "", "", "", "")
 		}
 
 	case "activeClientSessions":
@@ -517,7 +532,7 @@ func AddWriteCount(tableName string, funcName string) {
 			uuidNum++
 			clientSessionIdNum++
 			log.Printf("Insert uuid, clientSessionId : %d, %d", uuidNum, clientSessionIdNum)
-			LogDBAccess("activeClientSessions", "UpdateActiveSession", "W", uuid, clientSessionId, "", "", "")
+			LogDBAccess(uuid, "activeClientSessions", "UpdateActiveSession", "W", uuid, clientSessionId, "", "", "")
 		}
 
 	case "systemSaveData":
@@ -527,12 +542,12 @@ func AddWriteCount(tableName string, funcName string) {
 			dataNum++
 			timeStampNum++
 			log.Printf("StoreSystemSaveData uuid, data, timestamp : %d, %d, %d", uuidNum, dataNum, timeStampNum)
-			LogDBAccess("systemSaveData", "StoreSystemSaveData", "W", uuid, data, timeStamp, "", "")
+			LogDBAccess(uuid, "systemSaveData", "StoreSystemSaveData", "W", uuid, data, timeStamp, "", "")
 		}
 		if "DeleteSystemSaveData" == funcName {
 			systemDataDeleteNum++
 			log.Printf("DeleteSystemSaveData systemDataDeleteNum : %d", systemDataDeleteNum)
-			LogDBAccess("systemSaveData", "DeleteSystemSaveData", "W", systemDataDelete, "", "", "", "")
+			LogDBAccess(uuid, "systemSaveData", "DeleteSystemSaveData", "W", systemDataDelete, "", "", "", "")
 		}
 
 	default:
