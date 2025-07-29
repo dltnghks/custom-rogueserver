@@ -19,6 +19,7 @@ package account
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -48,7 +49,8 @@ func Logout(token []byte) error {
 	log.Printf("-------------------------------------------------------")
 
 	dbcount.PrintCount()
-	dbcount.Logout(string(uuid))
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.Logout(encodeUuid)
 
 	return nil
 }

@@ -130,12 +130,12 @@ func LogDBAccess(uuid string, tableName string, funcName string, RW string, data
 	mut.Lock()
 	defer mut.Unlock()
 
-	csvWriter, ok := csvWriters[uuid]
-	if !ok {
-		// Initialize for new UUID
-		InitTimer(uuid)
-		csvWriter = csvWriters[uuid]
-	}
+	csvWriter, _ := csvWriters[uuid]
+	// if !ok {
+	// 	// Initialize for new UUID
+	// 	InitTimer(uuid)
+	// 	csvWriter = csvWriters[uuid]
+	// }
 
 	elapsedTime := time.Since(initTime).Seconds()
 	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
@@ -215,7 +215,7 @@ func PrintCount() {
 	log.Printf("Unknown table name: %d", unkownTableNum)
 }
 
-func AddReadCount(uuid string, tableName string, funcName string) {
+func AddReadCount(uuidReal string, tableName string, funcName string) {
 	switch tableName {
 	case "accounts":
 		countReadAccounts++
@@ -224,12 +224,12 @@ func AddReadCount(uuid string, tableName string, funcName string) {
 			tokenNum++
 			expireNum++
 			log.Printf("AddAccountSession Read uuid, expire : %d, %d, %d", uuidNum, tokenNum, expireNum)
-			LogDBAccess(uuid, "accounts", "AddAccountSession", "R", uuid, token, expire, "", "")
+			LogDBAccess(uuidReal, "accounts", "AddAccountSession", "R", uuid, token, expire, "", "")
 		}
 		if "FetchUsernameByDiscordId" == funcName {
 			userNameNum++
 			log.Printf("username : %d", userNameNum)
-			LogDBAccess(uuid, "accounts", "FetchUsernameByDiscordId", "R", userName, "", "", "", "")
+			LogDBAccess(uuidReal, "accounts", "FetchUsernameByDiscordId", "R", userName, "", "", "", "")
 		}
 		if "FetchUsernameByGoogleId" == funcName {
 			userNameNum++

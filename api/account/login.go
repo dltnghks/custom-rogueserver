@@ -56,6 +56,8 @@ func Login(username, password string) (LoginResponse, error) {
 		return response, fmt.Errorf("password doesn't match")
 	}
 
+	response.Token, err = GenerateTokenForUsername(username)
+
 	uuid, err := db.FetchUUIDFromUsername(username)
 	if err != nil {
 		return response, fmt.Errorf("failed to fetch UUID: %s", err)
@@ -67,7 +69,7 @@ func Login(username, password string) (LoginResponse, error) {
 	fmt.Printf("uuid: %v\n", uuid)
 	fmt.Printf("encodedUuid: %s\n", encodeUuid)
 
-	dbcount.InitTimer(string(encodeUuid))
+	dbcount.InitTimer(encodeUuid)
 
 	if err != nil {
 		return response, fmt.Errorf("failed to generate token: %s", err)
