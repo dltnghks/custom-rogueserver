@@ -219,6 +219,36 @@ func PrintCount() {
 	log.Printf("Unknown table name: %d", unkownTableNum)
 }
 
+func AddAPILog(uuidReal string, logName string) {
+	if "login" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "logout" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "Info" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "get system" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "update system" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "verify system" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "delete system" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "get session" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "update session" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "delete session" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "clear session" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "newclear session" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "updateAll" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	}
+}
+
 func AddReadCount(uuidReal string, tableName string, funcName string) {
 	switch tableName {
 	case "accounts":

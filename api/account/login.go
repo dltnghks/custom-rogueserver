@@ -60,7 +60,7 @@ func Login(username, password string) (LoginResponse, error) {
 
 	response.Token, err = GenerateTokenForUsername(username)
 
-	uuid, err := db.FetchUUIDFromUsername(username)
+	uuid, err := db.UUIDFromUsername(username)
 	if err != nil {
 		return response, fmt.Errorf("failed to fetch UUID: %s", err)
 	}
@@ -72,6 +72,7 @@ func Login(username, password string) (LoginResponse, error) {
 	//fmt.Printf("encodedUuid: %s\n", encodeUuid)
 
 	dbcount.InitTimer(encodeUuid)
+	dbcount.AddAPILog(encodeUuid, "login")
 
 	if err != nil {
 		return response, fmt.Errorf("failed to generate token: %s", err)

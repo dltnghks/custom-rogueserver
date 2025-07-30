@@ -30,7 +30,7 @@ import (
 
 // /account/logout - log out of account
 func Logout(token []byte) error {
-	_, err := db.FetchUUIDFromToken(token)
+	_, err := db.UUIDFromToken(token)
 	if err != nil {
 		return fmt.Errorf("failed to fetch UUID from token: %s", err)
 	}

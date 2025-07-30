@@ -33,6 +33,7 @@ import (
 	"github.com/pagefaultgames/rogueserver/api/daily"
 	"github.com/pagefaultgames/rogueserver/api/savedata"
 	"github.com/pagefaultgames/rogueserver/db"
+	"github.com/pagefaultgames/rogueserver/dbcount"
 	"github.com/pagefaultgames/rogueserver/defs"
 )
 
@@ -49,6 +50,9 @@ func handleAccountInfo(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, err, http.StatusUnauthorized)
 		return
 	}
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddAPILog(encodeUuid, "Info")
 
 	username, err := db.FetchUsernameFromUUID(uuid)
 	if err != nil {
@@ -197,9 +201,13 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+
 	switch r.PathValue("action") {
 	case "get":
 		save, err := savedata.GetSession(uuid, slot)
+
+		dbcount.AddAPILog(encodeUuid, "get Session")
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -216,6 +224,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	case "update":
 		var session defs.SessionSaveData
 		err = json.NewDecoder(r.Body).Decode(&session)
+
+		dbcount.AddAPILog(encodeUuid, "update session")
 		if err != nil {
 			httpError(w, r, fmt.Errorf("failed to decode request body: %s", err), http.StatusBadRequest)
 			return
@@ -242,6 +252,9 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	case "clear":
 		var session defs.SessionSaveData
 		err = json.NewDecoder(r.Body).Decode(&session)
+
+		dbcount.AddAPILog(encodeUuid, "clear session")
+
 		if err != nil {
 			httpError(w, r, fmt.Errorf("failed to decode request body: %s", err), http.StatusBadRequest)
 			return
@@ -262,6 +275,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, resp)
 	case "newclear":
 		resp, err := savedata.NewClear(uuid, slot)
+		dbcount.AddAPILog(encodeUuid, "newclear session")
 		if err != nil {
 			httpError(w, r, fmt.Errorf("failed to read new clear: %s", err), http.StatusInternalServerError)
 			return
@@ -269,6 +283,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, r, resp)
 	case "delete":
+		dbcount.AddAPILog(encodeUuid, "delete session")
 		err := savedata.DeleteSession(uuid, slot)
 		if err != nil {
 			httpError(w, r, err, http.StatusInternalServerError)
@@ -296,6 +311,9 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, err, http.StatusUnauthorized)
 		return
 	}
+
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	dbcount.AddAPILog(encodeUuid, "updateAll")
 
 	var data CombinedSaveData
 	err = json.NewDecoder(r.Body).Decode(&data)
@@ -399,6 +417,8 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+
 	var active bool
 	if !r.URL.Query().Has("clientSessionId") {
 		httpError(w, r, fmt.Errorf("missing clientSessionId"), http.StatusBadRequest)
@@ -413,6 +433,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 	switch r.PathValue("action") {
 	case "get":
+		dbcount.AddAPILog(encodeUuid, "get system")
 		if !active {
 			log.Printf("handle system get and updateActiveSession")
 			err = db.UpdateActiveSession(uuid, r.URL.Query().Get("clientSessionId"))
@@ -437,6 +458,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, r, save)
 	case "update":
+		dbcount.AddAPILog(encodeUuid, "update system")
 		if !active {
 			httpError(w, r, fmt.Errorf("session out of date: not active"), http.StatusBadRequest)
 			return
@@ -474,6 +496,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusNoContent)
 	case "verify":
+		dbcount.AddAPILog(encodeUuid, "verify system")
 		response := SystemVerifyResponse{
 			Valid: active,
 		}
@@ -500,6 +523,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, r, response)
 	case "delete":
+		dbcount.AddAPILog(encodeUuid, "delete system")
 		err := savedata.DeleteSystem(uuid)
 		if err != nil {
 			httpError(w, r, err, http.StatusInternalServerError)
