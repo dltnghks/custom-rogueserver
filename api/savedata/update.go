@@ -28,6 +28,7 @@ import (
 // /savedata/update - update save data
 func Update(uuid []byte, slot int, save any) error {
 	err := db.UpdateAccountLastActivity(uuid)
+	log.Printf("update!!!!!!!!!!!!!!")
 	if err != nil {
 		log.Print("failed to update account last activity")
 	}

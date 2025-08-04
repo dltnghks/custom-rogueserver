@@ -224,6 +224,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	case "update":
 		var session defs.SessionSaveData
 		err = json.NewDecoder(r.Body).Decode(&session)
+		log.Printf("update session!!!!!!!!!!!!!")
 
 		dbcount.AddAPILog(encodeUuid, "update session")
 		if err != nil {
@@ -459,6 +460,7 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, save)
 	case "update":
 		dbcount.AddAPILog(encodeUuid, "update system")
+		log.Printf("update system!!!!!!!!!!!!!")
 		if !active {
 			httpError(w, r, fmt.Errorf("session out of date: not active"), http.StatusBadRequest)
 			return
