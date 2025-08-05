@@ -92,14 +92,15 @@ var fetchRankings string = "fetchRankings"
 // var countdailyRuns string = ""  // 주석처리 되어 있어 유지
 var getDailyRunSeed string = "getDailyRunSeed"
 
-var initTime time.Time
+// var initTime time.Time
+var initTimes = make(map[string]time.Time)
 var csvWriters = make(map[string]*csv.Writer)
 var csvFiles = make(map[string]*os.File)
 var mut sync.Mutex
 
 func InitTimer(uuid string) error {
-	initTime = time.Now()
-	log.Printf("init 시작 시간 : %s", initTime.Format("time.RFC3339Nano"))
+	initTimes[uuid] = time.Now()
+	log.Printf("init 시작 시간 : %s", initTimes[uuid].Format("time.RFC3339Nano"))
 
 	var err error
 
@@ -139,6 +140,8 @@ func LogDBAccess(uuid string, tableName string, funcName string, RW string, data
 		csvWriter = csvWriters[uuid]
 	}
 
+	initTime := initTimes[uuid]
+
 	elapsedTime := time.Since(initTime).Seconds()
 	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
 
@@ -152,7 +155,7 @@ func LogDBAccess(uuid string, tableName string, funcName string, RW string, data
 }
 
 func Logout(uuid string) {
-	totalElapsed := time.Since(initTime).Seconds()
+	totalElapsed := time.Since(initTimes[uuid]).Seconds()
 	log.Printf("Logout game end and total time: +%.3fs", totalElapsed)
 
 	mut.Lock()
