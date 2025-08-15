@@ -10,8 +10,8 @@ services:
       dbuser: pokerogue
       dbpass: pokerogue
       dbname: pokeroguedb
-      gameurl: http://34.42.32.176 #http://localhost:8000
-      callbackurl: http://34.42.32.176 #http://localhost:8001
+      gameurl: http://35.209.38.139 #http://localhost:8000
+      callbackurl: http://35.209.38.139 #http://localhost:8001
 
     depends_on:
       db:
