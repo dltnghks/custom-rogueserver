@@ -96,79 +96,99 @@ var getDailyRunSeed string = "getDailyRunSeed"
 var initTimes = make(map[string]time.Time)
 var csvWriters = make(map[string]*csv.Writer)
 var csvFiles = make(map[string]*os.File)
+var userNameFromUuid = make(map[string]string) //key uuid, value userName
+var countConnect = make(map[string]int)
 var mut sync.Mutex
 
-func InitTimer(uuid string) error {
+//var isUseUuid = make(map[string]bool)
+
+func InitTimer(uuid string, userName string) error {
+	mut.Lock()
+	defer mut.Unlock()
+
 	initTimes[uuid] = time.Now()
-	log.Printf("init 시작 시간 : %s", initTimes[uuid].Format("time.RFC3339Nano"))
+	userNameFromUuid[uuid] = userName
+	countConnect[uuid]++
+	log.Printf("init 시작 시간 : %s", initTimes[uuid].Format(time.RFC3339Nano))
+	log.Printf("countConnect[%s] : %d", uuid, countConnect[uuid])
+	log.Printf("userName[%s]", userName)
 
-	var err error
-
-	err = os.MkdirAll("/app/csv/", 0777)
-	if err != nil {
-		log.Fatalf("Failed to create directory: %v", err)
+	if err := os.MkdirAll("/app/csv", 0o755); err != nil {
 		return fmt.Errorf("디렉토리 생성 실패: %w", err)
 	}
 
-	fileName := fmt.Sprintf("/app/csv/%s_db_access_count.csv", uuid)
-	csvFile, err := os.Create(fileName)
-	if err != nil {
-		log.Fatalf("Failed to create CSV file: %v", err)
+	// 이미 열려 있으면 재사용
+	if _, ok := csvWriters[uuid]; ok {
+		return nil
 	}
 
-	csvFiles[uuid] = csvFile
-	csvWriters[uuid] = csv.NewWriter(csvFile)
-
-	err = csvWriters[uuid].Write([]string{"Table Name", "Function Name", "Time", "R/W", "data1", "data2", "data3", "data4", "data5"})
+	fileName := fmt.Sprintf("/app/csv/%s_db_access_count%d.csv", userNameFromUuid[uuid], countConnect[uuid])
+	log.Printf("/app/csv/_%s_db_access_count", userName)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return fmt.Errorf("CSV 헤더 작성 실패: %w", err)
+		return fmt.Errorf("CSV 파일 열기 실패: %w", err)
 	}
 
+	if old := csvFiles[uuid]; old != nil && old != f {
+		_ = old.Close()
+	}
+	csvFiles[uuid] = f
+	csvWriters[uuid] = csv.NewWriter(f)
 	return nil
 }
 
 func LogDBAccess(uuid string, tableName string, funcName string, RW string, data1 string, data2 string, data3 string, data4 string, data5 string) {
+	// writer 없으면 초기화 (덮어쓰기 없이 append 모드로 열림)
+	if _, ok := csvWriters[uuid]; !ok {
+		// if err := InitTimer(uuid, userNameFromUuid[uuid]); err != nil {
+		// 	log.Printf("InitTimer 실패(uuid=%s): %v", uuid, err)
+		// 	return
+		// }
+		log.Printf("LogDBAccess 실패 writer 없음")
+		return
+	}
+
 	mut.Lock()
-	defer mut.Unlock()
-
-	//log.Printf(uuid, "uuid	!!!!!!!!!!!!")
-
-	csvWriter, ok := csvWriters[uuid]
-	if !ok {
-		// Initialize for new UUID
-		InitTimer(uuid)
-		csvWriter = csvWriters[uuid]
-	}
-
 	initTime := initTimes[uuid]
-
-	elapsedTime := time.Since(initTime).Seconds()
-	record := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsedTime), RW, data1, data2, data3, data4, data5}
-
-	csvWriter.Write(record)
-
-	if err := csvWriter.Error(); err != nil {
-		log.Printf("CSV writer error: %v", err)
+	w := csvWriters[uuid]
+	mut.Unlock()
+	if w == nil {
+		log.Printf("writer 없음(uuid=%s)", uuid)
+		return
 	}
 
-	csvWriter.Flush()
+	elapsed := time.Since(initTime).Seconds()
+	rec := []string{tableName, funcName, fmt.Sprintf("%.3f", elapsed), RW, data1, data2, data3, data4, data5}
+
+	mut.Lock()
+	_ = w.Write(rec)
+	w.Flush()
+	err := w.Error()
+	mut.Unlock()
+
+	if err != nil {
+		log.Printf("CSV writer error(uuid=%s): %v", uuid, err)
+	}
 }
 
 func Logout(uuid string) {
+	mut.Lock()
 	totalElapsed := time.Since(initTimes[uuid]).Seconds()
+	mut.Unlock()
 	log.Printf("Logout game end and total time: +%.3fs", totalElapsed)
 
 	mut.Lock()
-	defer mut.Unlock()
-
-	//log.Printf("uuid : %s", uuid)
-
-	if csvFile, ok := csvFiles[uuid]; ok {
-		csvWriters[uuid].Flush()
-		csvFile.Close()
-		delete(csvFiles, uuid)
-		delete(csvWriters, uuid)
+	if w := csvWriters[uuid]; w != nil {
+		w.Flush()
 	}
+	if f := csvFiles[uuid]; f != nil {
+		_ = f.Close()
+	}
+	delete(csvWriters, uuid)
+	delete(csvFiles, uuid)
+	delete(initTimes, uuid)
+	mut.Unlock()
+
 	log.Printf("csv 저장 완료.")
 }
 
@@ -248,6 +268,8 @@ func AddAPILog(uuidReal string, logName string) {
 	} else if "newclear session" == logName {
 		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
 	} else if "updateAll" == logName {
+		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
+	} else if "login start!" == logName {
 		LogDBAccess(uuidReal, logName, "", "", "", "", "", "", "")
 	}
 }

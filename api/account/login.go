@@ -68,10 +68,13 @@ func Login(username, password string) (LoginResponse, error) {
 	fmt.Println("uuid length:", len(uuid)) // 16이 나와야 정상
 
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
+	//encodeUserName := base64.RawURLEncoding.EncodeToString([]byte(username))
 	//fmt.Printf("uuid: %v\n", uuid)
 	//fmt.Printf("encodedUuid: %s\n", encodeUuid)
 
-	dbcount.InitTimer(encodeUuid)
+	//userNameFromUuid[encodeUuid] = username
+	dbcount.InitTimer(encodeUuid, username)
+	dbcount.AddAPILog(encodeUuid, "login start!")
 	dbcount.AddAPILog(encodeUuid, "login")
 
 	if err != nil {
