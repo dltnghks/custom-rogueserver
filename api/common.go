@@ -83,6 +83,7 @@ func tokenFromRequest(r *http.Request) ([]byte, error) {
 	}
 
 	token, err := base64.StdEncoding.DecodeString(r.Header.Get("Authorization"))
+	//log.Printf("token : %s", token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode token: %s", err)
 	}

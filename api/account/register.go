@@ -20,12 +20,14 @@ package account
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 
 	"github.com/pagefaultgames/rogueserver/db"
 )
 
 // /account/register - register account
 func Register(username, password string) error {
+	log.Printf(("username and password %s, %s"), username, password)
 	if !isValidUsername(username) {
 		return fmt.Errorf("invalid username")
 	}

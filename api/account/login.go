@@ -25,6 +25,8 @@ import (
 	"errors"
 	"fmt"
 
+	//"log"
+
 	"github.com/pagefaultgames/rogueserver/db"
 	"github.com/pagefaultgames/rogueserver/dbcount"
 )
@@ -86,6 +88,7 @@ func Login(username, password string) (LoginResponse, error) {
 
 func GenerateTokenForUsername(username string) (string, error) {
 	token := make([]byte, TokenSize)
+	//log.Printf("token2 : %s", token)
 	_, err := rand.Read(token)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %s", err)
