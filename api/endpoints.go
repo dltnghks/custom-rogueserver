@@ -275,6 +275,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, r, resp)
 	case "newclear":
+		log.Printf("newclear session!!!!!!")
 		resp, err := savedata.NewClear(uuid, slot)
 		dbcount.AddAPILog(encodeUuid, "newclear session")
 		if err != nil {
@@ -335,12 +336,18 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//updateAll을 위해 필요.
+	active = true
 	if !active {
 		httpError(w, r, fmt.Errorf("session out of date: not active"), http.StatusBadRequest)
 		return
 	}
 
 	storedTrainerId, storedSecretId, err := db.FetchTrainerIds(uuid)
+	// updateAll을 위해 필요.
+	data.System.TrainerId = storedTrainerId
+	data.System.SecretId = storedSecretId
+
 	if err != nil {
 		httpError(w, r, err, http.StatusInternalServerError)
 		return
@@ -365,6 +372,11 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		playtime, ok := data.System.GameStats.(map[string]interface{})["playTime"].(float64)
+		//gatling updateAll 필요
+		if !ok {
+			ok = true
+			playtime = 0
+		}
 		if !ok {
 			httpError(w, r, fmt.Errorf("no playtime found"), http.StatusBadRequest)
 			return
@@ -388,7 +400,7 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//log.Println("Update ", uuid, data.SessionSlotId, data.Session);
+	log.Println("Update ", uuid, data.SessionSlotId, data.Session)
 	err = savedata.Update(uuid, data.SessionSlotId, data.Session)
 	if err != nil {
 		log.Print(err)
@@ -675,7 +687,7 @@ func handleProviderCallback(w http.ResponseWriter, r *http.Request) {
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,
 			Domain:   "pokerogue.net",
-			Expires:  time.Now().Add(time.Hour * 24 * 30 * 3), // 3 months
+			Expires:  time.Now().Add(time.Hour * 24 * 30), // 30 days
 		})
 	}
 

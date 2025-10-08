@@ -1,6 +1,7 @@
 package dbcount
 
 import (
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"log"
@@ -8,6 +9,10 @@ import (
 	"sync"
 	"time"
 )
+
+var usernameValue string = ""
+var passwordValue string = ""
+var tokenValue string = ""
 
 var countReadAccounts int = 0
 var countReadAccountStats int = 0
@@ -100,7 +105,86 @@ var userNameFromUuid = make(map[string]string) //key uuid, value userName
 var countConnect = make(map[string]int)
 var mut sync.Mutex
 
+// csv file data save structure.
+type userFormat struct {
+	Username string
+	Password string
+}
+
+var userData map[userFormat]string
+
 //var isUseUuid = make(map[string]bool)
+
+func GetUserFormat() userFormat {
+	return userFormat{}
+}
+
+func SetUserName(uName string) {
+	usernameValue = uName
+	//return usernameValue
+}
+
+func SetPassword(uPass string) {
+	passwordValue = uPass
+	//return passwordValue
+}
+
+func SetToken(uToken string) {
+	tokenValue = uToken
+	//return tokenValue
+}
+
+func GetUserName() string {
+	return usernameValue
+}
+
+func GetPassword() string {
+	return passwordValue
+}
+
+func GetToken() string {
+	return tokenValue
+}
+
+func CompareUser(userF userFormat, uToken []byte) []byte {
+	//map 자료구조에 저장된 비밀번호와 동일하다면 이미 계정이 로그인을 진행한 상황.
+	//즉 token값 변경하면 안 됨.
+	if userData[userF] != base64.StdEncoding.EncodeToString(uToken) {
+		log.Printf("새로운 계정 로그인 감지, token값 변경 : %s", userF.Username)
+		uToken = []byte(userData[userF])
+	}
+	return uToken
+}
+
+func LoadCSVFile(filePath string) (map[userFormat]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, record := range records {
+		if len(record) >= 3 {
+			key := userFormat{
+				Username: record[0],
+				Password: record[1],
+			}
+
+			tokenInfo := record[2]
+			userData[key] = tokenInfo
+		}
+	}
+
+	log.Printf("load csv : %v", userData)
+
+	return userData, nil
+}
 
 func InitTimer(uuid string, userName string) error {
 	mut.Lock()

@@ -602,8 +602,11 @@ func IsActiveSession(uuid []byte, sessionId string) (bool, error) {
 	encodeUuid := base64.RawURLEncoding.EncodeToString(uuid)
 	dbcount.AddReadCount(encodeUuid, "activeClientSessions", "IsActiveSession")
 
+	log.Printf("IsActiveSession sessionId: %s, db sessionId: %s", sessionId, id)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("err = UpdateActiveSession")
 			err = UpdateActiveSession(uuid, sessionId)
 			if err != nil {
 				return false, err
@@ -614,6 +617,7 @@ func IsActiveSession(uuid []byte, sessionId string) (bool, error) {
 
 		return false, err
 	}
+	log.Printf("return IsActiveSession")
 
 	return id == "" || id == sessionId, nil
 }

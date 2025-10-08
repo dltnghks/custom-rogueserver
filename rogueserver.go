@@ -29,11 +29,15 @@ import (
 	"github.com/pagefaultgames/rogueserver/api"
 	"github.com/pagefaultgames/rogueserver/api/account"
 	"github.com/pagefaultgames/rogueserver/db"
+	"github.com/pagefaultgames/rogueserver/dbcount"
 )
 
 func main() {
 	// env stuff
 	debug, _ := strconv.ParseBool(os.Getenv("debug"))
+
+	//csv file read and save.
+	dbcount.LoadCSVFile("/app/csv/credentials.csv")
 
 	proto := getEnv("proto", "tcp")
 	addr := getEnv("addr", "0.0.0.0:8001")
