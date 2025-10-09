@@ -169,6 +169,8 @@ func LoadCSVFile(filePath string) (map[userFormat]string, error) {
 		return nil, err
 	}
 
+	userData := make(map[userFormat]string)
+
 	for _, record := range records {
 		if len(record) >= 3 {
 			key := userFormat{

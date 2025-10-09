@@ -337,7 +337,7 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//updateAll을 위해 필요.
-	active = true
+	//active = true
 	if !active {
 		httpError(w, r, fmt.Errorf("session out of date: not active"), http.StatusBadRequest)
 		return
@@ -345,8 +345,8 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 
 	storedTrainerId, storedSecretId, err := db.FetchTrainerIds(uuid)
 	// updateAll을 위해 필요.
-	data.System.TrainerId = storedTrainerId
-	data.System.SecretId = storedSecretId
+	//data.System.TrainerId = storedTrainerId
+	//data.System.SecretId = storedSecretId
 
 	if err != nil {
 		httpError(w, r, err, http.StatusInternalServerError)
@@ -373,10 +373,10 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 	} else {
 		playtime, ok := data.System.GameStats.(map[string]interface{})["playTime"].(float64)
 		//gatling updateAll 필요
-		if !ok {
-			ok = true
-			playtime = 0
-		}
+		//if !ok {
+		//	ok = true
+		//	playtime = 0
+		//}
 		if !ok {
 			httpError(w, r, fmt.Errorf("no playtime found"), http.StatusBadRequest)
 			return

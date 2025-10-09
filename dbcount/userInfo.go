@@ -17,7 +17,7 @@ func WriteCredentialsToCSV(username, password, token string) {
 	csvMutex.Lock()
 	defer csvMutex.Unlock() // 함수가 끝나면 (에러 발생 여부와 상관없이) 자동으로 잠금을 해제합니다.
 
-	filePath := "/app/csv/credentials5.csv"
+	filePath := "/app/csv/credentials2.csv"
 
 	// 3. 파일을 추가 쓰기 모드(Append)로 엽니다. 파일이 없으면 새로 생성합니다.
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
