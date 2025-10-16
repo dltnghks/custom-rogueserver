@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   server:
     image: rogueserver:latest
@@ -12,10 +14,13 @@ services:
       dbname: pokeroguedb
       gameurl: http://35.209.125.149 #http://localhost:8000
       callbackurl: http://35.209.125.149 #http://localhost:8001
-
+      # Jaeger OTLP gRPC 엔드포인트 설정 (포트 4317)
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "jaeger:4317"
     depends_on:
       db:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     networks:
       - internal
     ports:
@@ -35,7 +40,6 @@ services:
     healthcheck:
       test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
       start_period: 10s
-      #start_interval: 10s
       interval: 1m
       timeout: 5s
       retries: 3
@@ -46,7 +50,7 @@ services:
       MYSQL_PASSWORD: pokerogue
     volumes:
       - /mnt/ssd/database:/var/lib/mysql
-      - ./mariadb.cnf:/etc/mysql/conf.d/mariadb.cnf  # 설정 파일 로드
+      - ./mariadb.cnf:/etc/mysql/conf.d/mariadb.cnf   # 설정 파일 로드
       - ./init-permissions.sql:/docker-entrypoint-initdb.d/init-permissions.sql
     networks:
       - internal
@@ -61,23 +65,6 @@ services:
           cpus: '0.3'
           memory: 3G
 
-
-  # Watchtower is a service that will automatically update your running containers
-  # when a new image is available. This is useful for keeping your server up-to-date.
-  # see https://containrrr.dev/watchtower/ for more information.
-  #watchtower:
-  #  image: containrrr/watchtower
-  #  container_name: watchtower
-  #  restart: always
-  #  security_opt:
-  #    - no-new-privileges:true
-  #  environment:
-  #    WATCHTOWER_CLEANUP: "true"
-  #    WATCHTOWER_SCHEDULE: "@midnight"
-  #  volumes:
-  #    - /etc/localtime:/etc/localtime:ro
-  #    - /var/run/docker.sock:/var/run/docker.sock
-
   mysqld_exporter:
     image: prom/mysqld-exporter:latest
     container_name: mysqld_exporter
@@ -87,7 +74,6 @@ services:
     command:
       - "--mysqld.username=pokerogue:pokerogue"
       - "--mysqld.address=db:3306"
-        #- "--collect.slave_status"
     environment:
       - DATA_SOURCE_NAME=pokerogue:pokerogue@(db:3306)/
     depends_on:
@@ -107,14 +93,14 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.0
     container_name: cadvisor
-    privileged: true # Docker 소켓 및 시스템 정보 접근을 위해 필요
+    privileged: true
     volumes:
-      - /:/rootfs:ro # 호스트 파일 시스템 읽기 전용 마운트
-      - /var/run:/var/run:rw # Docker 데몬 소켓 접근
-      - /sys:/sys:ro # 시스템 정보 접근
-      - /var/lib/docker:/var/lib/docker:ro # Docker 데이터 디렉토리 읽기 전용
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
     ports:
-      - "8080:8080" # VM3의 Prometheus가 이 포트로 cAdvisor 메트릭을 스크랩
+      - "8080:8080"
     networks:
       - monitoring_network
     restart: always
@@ -127,14 +113,42 @@ services:
           cpus: '0.1'
           memory: 0.1G
 
+  # Jaeger 서비스 추가
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "14250:14250"
+      - "14268:14268"
+      - "14269:14269"
+      - "9411:9411"
+    networks:
+      - internal # server 서비스와 통신을 위해 internal 네트워크에 연결
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+
 volumes:
   mariadb_data:
 
 networks:
   internal:
-   
-  # 모니터링 Exporter와 Prometheus간의 통신용 네트워크
-  # Prometheus가 
+    driver: bridge
+  
   monitoring_network:
-    driver: bridge 
-
+    driver: bridge

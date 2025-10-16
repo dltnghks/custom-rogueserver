@@ -113,8 +113,6 @@ type userFormat struct {
 
 var userData map[userFormat]string
 
-//var isUseUuid = make(map[string]bool)
-
 func GetUserFormat() userFormat {
 	return userFormat{}
 }

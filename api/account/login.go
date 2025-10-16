@@ -24,6 +24,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 
 	//"log"
 
@@ -38,6 +39,7 @@ type LoginResponse GenericAuthResponse
 func Login(username, password string) (LoginResponse, error) {
 	var response LoginResponse
 
+	log.Printf("username : %s", username)
 	if !isValidUsername(username) {
 		return response, fmt.Errorf("invalid username")
 	}
@@ -61,8 +63,8 @@ func Login(username, password string) (LoginResponse, error) {
 		return response, fmt.Errorf("password doesn't match")
 	}
 
-	//dbcount.SetUserName(username)
-	//dbcount.SetPassword(password)
+	dbcount.SetUserName(username)
+	dbcount.SetPassword(password)
 
 	response.Token, err = GenerateTokenForUsername(username)
 
@@ -104,11 +106,13 @@ func GenerateTokenForUsername(username string) (string, error) {
 
 	//이미 login을 진행했던 계정이면 token값 수정 안 되게 설정하기.
 	//어떻게 구현하지? username이랑 password를 받아서 동일한 username과 password가 있으면 token값 수정 안 되게 if문으로 처리.
+	key := dbcount.GetUserFormat()
+	key.Username = username
+	key.Password = dbcount.GetPassword()
 
-	//key := dbcount.GetUserFormat()
-	//key.Username = username
-	//key.Password = dbcount.GetPassword()
-	//token = dbcount.CompareUser(key, token)
+	log.Printf("token before compare : %s", token)
+	token = dbcount.CompareUser(key, token)
+	log.Printf("token after compare : %s", token)
 
 	err = db.AddAccountSession(username, token)
 	if err != nil {
