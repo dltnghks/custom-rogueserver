@@ -25,42 +25,40 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/pagefaultgames/rogueserver/api"
 	"github.com/pagefaultgames/rogueserver/api/account"
 	"github.com/pagefaultgames/rogueserver/db"
 	"github.com/pagefaultgames/rogueserver/dbcount"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
-	// CHANGED: HTTP 익스포터 대신 gRPC 익스포터를 사용합니다.
+	// OTLP gRPC 익스포터
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
-	"go.opentelemetry.io/otel/trace"
-	// ADDED: gRPC 옵션을 위해 추가합니다.
 )
 
-// initTracerProvider 함수를 수정하여 환경 변수를 사용하도록 변경합니다.
+// -------- OpenTelemetry TracerProvider 초기화 --------
+
 func initTracerProvider() (*sdktrace.TracerProvider, error) {
 	ctx := context.Background()
 
-	// CHANGED: 하드코딩된 주소 대신 환경 변수에서 Jaeger 엔드포인트를 읽어옵니다.
-	// docker-compose.yml에 설정된 OTEL_EXPORTER_OTLP_TRACES_ENDPOINT 값을 사용합니다.
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "jaeger:4317" // 환경 변수가 없을 경우의 기본값
+		endpoint = "jaeger:4317"
 	}
-
 	log.Printf("Initializing OTLP gRPC exporter with endpoint: %s", endpoint)
 
-	// CHANGED: OTLP/HTTP 익스포터를 OTLP/gRPC 익스포터로 변경합니다.
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithInsecure(),         // Docker 내부 통신이므로 TLS 없이 연결
-		otlptracegrpc.WithEndpoint(endpoint), // 환경 변수에서 읽어온 주소 사용
+	exp, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithInsecure(),
+		otlptracegrpc.WithEndpoint(endpoint),
 	)
 	if err != nil {
 		return nil, err
@@ -68,7 +66,7 @@ func initTracerProvider() (*sdktrace.TracerProvider, error) {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("pokerogue-api-server"), // Jaeger UI에 표시될 서비스 이름
+			semconv.ServiceNameKey.String("pokerogue-api-server"),
 		),
 	)
 	if err != nil {
@@ -76,40 +74,99 @@ func initTracerProvider() (*sdktrace.TracerProvider, error) {
 	}
 
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(exp),
 		sdktrace.WithResource(res),
 	)
 	return tp, nil
 }
 
-// featureContextMiddleware 함수는 변경 없음
+// -------- 기능 컨텍스트 + 집계 + 요약 미들웨어 --------
+
 func featureContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
 		feature := r.Header.Get("X-Pokerogue-Feature")
+		action := r.Header.Get("X-Pokerogue-Action")
+
+		ctx := r.Context()
+		ctx = db.WithFeatureTags(ctx, feature, action)
+		ctx = db.WithFeatureAgg(ctx, &db.FeatureAgg{})
+
+		// otelhttp가 parent 요청 스팬을 만들어둠 → 태그 부착
+		span := trace.SpanFromContext(ctx)
 		if feature != "" {
-			span := trace.SpanFromContext(r.Context())
-			span.SetAttributes(attribute.String("pokerogue.feature", feature))
+			span.SetAttributes(
+				attribute.String("feature", feature),
+				attribute.String("action", action),
+			)
 		}
+
+		// ★ 고루틴-로컬 컨텍스트 push/pop (콜사이트 무수정 핵심)
+		db.PushCtxForMiddleware(ctx)
+		defer db.PopCtxForMiddleware()
+
+		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
+
+		// 응답 직전 요약 속성 기록
+		totalMs := time.Since(start).Milliseconds()
+		agg := db.GetAgg(ctx)
+		if agg != nil {
+			ioMs := agg.DBDurationMs + agg.RedisDurationMs
+			if ioMs < 0 {
+				ioMs = 0
+			}
+			cpuMs := totalMs - ioMs
+			if cpuMs < 0 {
+				cpuMs = 0
+			}
+
+			bound := "mixed"
+			if totalMs > 0 {
+				ratio := float64(ioMs) / float64(totalMs)
+				if ratio >= 0.6 {
+					bound = "io-bound"
+				} else if ratio <= 0.4 {
+					bound = "cpu-bound"
+				}
+			}
+
+			span.SetAttributes(
+				attribute.Int64("io.db.read.count", agg.DBReadCount),
+				attribute.Int64("io.db.write.count", agg.DBWriteCount),
+				attribute.Int64("io.db.read.rows", agg.DBReadRows),
+				attribute.Int64("io.db.write.rows", agg.DBWriteRows),
+				attribute.Int64("io.db.duration.ms", agg.DBDurationMs),
+
+				attribute.Int64("io.redis.read.count", agg.RedisReadCount),
+				attribute.Int64("io.redis.write.count", agg.RedisWriteCount),
+				attribute.Int64("io.redis.duration.ms", agg.RedisDurationMs),
+
+				attribute.Int64("total.duration.ms", totalMs),
+				attribute.Int64("cpu.duration.ms", cpuMs),
+				attribute.String("workload.bound", bound),
+
+				attribute.Int64("db.n_plus_1.count", agg.NPlus1),
+			)
+		}
 	})
 }
 
+// --------------------------- main ---------------------------
+
 func main() {
-	// OpenTelemetry Tracer Provider 초기화
 	tp, err := initTracerProvider()
 	if err != nil {
 		log.Fatalf("failed to initialize tracer provider: %s", err)
 	}
 	otel.SetTracerProvider(tp)
-
-	// 애플리케이션 종료 시 Tracer Provider를 안전하게 종료합니다.
 	defer func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
 	}()
 
-	// ... (환경 변수 설정 부분은 변경 없음) ...
 	debug, _ := strconv.ParseBool(os.Getenv("debug"))
 	dbcount.LoadCSVFile("/app/csv/credentials.csv")
 	proto := getEnv("proto", "tcp")
@@ -129,6 +186,7 @@ func main() {
 	gameurl := getEnv("gameurl", "https://pokerogue.net")
 	discordbottoken := getEnv("discordbottoken", "")
 	discordguildid := getEnv("discordguildid", "")
+
 	account.GameURL = gameurl
 	account.DiscordClientID = discordclientid
 	account.DiscordClientSecret = discordsecretid
@@ -141,35 +199,36 @@ func main() {
 	gob.Register([]interface{}{})
 	gob.Register(map[string]interface{}{})
 
-	// get database connection
+	// DB 연결
 	err = db.Init(dbuser, dbpass, dbproto, dbaddr, dbname)
 	if err != nil {
 		log.Fatalf("failed to initialize database: %s", err)
 	}
 
-	// create listener
+	// Listener
 	listener, err := createListener(proto, addr)
 	if err != nil {
 		log.Fatalf("failed to create net listener: %s", err)
 	}
 
+	// 라우터
 	mux := http.NewServeMux()
 
-	// init api
+	// API 초기화
 	if err := api.Init(mux); err != nil {
 		log.Fatal(err)
 	}
 
-	// start web server
-	handler := prodHandler(mux, gameurl)
+	// 핸들러 체인
+	var base http.Handler = prodHandler(mux, gameurl)
 	if debug {
-		handler = debugHandler(mux)
+		base = debugHandler(mux)
 	}
 
-	// 미들웨어 체인 적용
-	finalHandler := otelhttp.NewHandler(featureContextMiddleware(handler), "http-server")
+	// 체인: otelhttp → featureContextMiddleware → base
+	finalHandler := otelhttp.NewHandler(featureContextMiddleware(base), "http-server")
 
-	// 중복된 서버 시작 코드를 제거하고 하나로 합칩니다.
+	// 서버 시작
 	if tlscert == "" {
 		err = http.Serve(listener, finalHandler)
 	} else {
@@ -180,10 +239,11 @@ func main() {
 	}
 }
 
-// createListener 함수는 변경 없음
+// ------------------------ helpers ------------------------
+
 func createListener(proto, addr string) (net.Listener, error) {
 	if proto == "unix" {
-		os.Remove(addr)
+		_ = os.Remove(addr)
 	}
 	listener, err := net.Listen(proto, addr)
 	if err != nil {
@@ -200,8 +260,8 @@ func createListener(proto, addr string) (net.Listener, error) {
 
 func prodHandler(router *http.ServeMux, clienturl string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// CORS 허용 헤더에 'X-Pokerogue-Feature' 추가
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Pokerogue-Feature")
+		w.Header().Set("Access-Control-Allow-Headers",
+			"Authorization, Content-Type, X-Pokerogue-Feature, X-Pokerogue-Action")
 		w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET, POST")
 		w.Header().Set("Access-Control-Allow-Origin", clienturl)
 
@@ -209,12 +269,10 @@ func prodHandler(router *http.ServeMux, clienturl string) http.Handler {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		router.ServeHTTP(w, r)
 	})
 }
 
-// debugHandler 함수는 변경 없음
 func debugHandler(router *http.ServeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -225,12 +283,10 @@ func debugHandler(router *http.ServeMux) http.Handler {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
 		router.ServeHTTP(w, r)
 	})
 }
 
-// getEnv 함수는 변경 없음
 func getEnv(key string, defaultValue string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value

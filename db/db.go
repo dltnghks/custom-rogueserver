@@ -25,22 +25,27 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var handle *sql.DB
+var raw *sql.DB      // 실제 드라이버 핸들
+var handle *tracedDB // 기존 코드가 쓰는 핸들 (래퍼로 교체)
 
 func Init(username, password, protocol, address, database string) error {
 	var err error
 
-	handle, err = sql.Open("mysql", username+":"+password+"@"+protocol+"("+address+")/"+database)
+	dsn := username + ":" + password + "@" + protocol + "(" + address + ")/" + database
+	raw, err = sql.Open("mysql", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %s", err)
 	}
 
+	// 래퍼 장착: 기존 코드의 handle.* 호출은 모두 tracedDB 메서드로 흘러간다
+	handle = &tracedDB{inner: raw}
+
 	conns := 64
+	raw.SetMaxOpenConns(conns)
+	raw.SetMaxIdleConns(conns)
 
-	handle.SetMaxOpenConns(conns)
-	handle.SetMaxIdleConns(conns)
-
-	tx, err := handle.Begin()
+	// 마이그레이션은 raw로 수행(원 코드 유지)
+	tx, err := raw.Begin()
 	if err != nil {
 		log.Fatal(err)
 	}
